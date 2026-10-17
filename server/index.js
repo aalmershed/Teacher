@@ -17,9 +17,16 @@ const PORT = Number(process.env.PORT || 3000);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
 const SESSION_DAYS = 30;
 const PUBLIC = path.join(__dirname, '..', 'public');
+const PUBLIC_URL = (process.env.PUBLIC_URL || '').replace(/\/+$/, '');
+const FILE_MAX_MB = Number(process.env.FILE_MAX_MB || 25);
+const STORAGE_QUOTA_MB = Number(process.env.STORAGE_QUOTA_MB || 1000);
 
 const app = express();
 app.disable('x-powered-by');
+if (process.env.TRUST_PROXY) app.set('trust proxy', true);
+
+// الرابط الأساسي للموقع — يُستخدم في روابط الملفات ورموز QR
+const baseUrl = (req) => PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
 app.use(express.json({ limit: '3mb' }));
 app.use(cookieParser());
 
@@ -116,6 +123,7 @@ app.post('/api/subscribe', requireAuth, (req, res) => {
 const BLOCK_TYPES = new Set(['text', 'fields', 'table', 'images', 'links', 'quote']);
 const PAGE_TYPES = new Set(['cover', 'opening', 'toc', 'section', 'backcover']);
 const str = (v, max = 2000) => String(v ?? '').slice(0, max);
+const FILE_ID = /^[a-f0-9]{32}$/;
 
 function cleanData(data) {
   if (!data || !Array.isArray(data.pages)) throw new Error('بيانات غير صالحة');
@@ -139,7 +147,12 @@ function cleanData(data) {
           return { ...base, columns, rows: (b.rows || []).slice(0, 80).map((r) => columns.map((_, i) => str((r || [])[i], 1000))) };
         }
         case 'images': return { ...base, items: (b.items || []).slice(0, 24).map((i) => ({ uploadId: /^[a-f0-9]{24}$/.test(i.uploadId) ? i.uploadId : '', caption: str(i.caption, 300) })) };
-        case 'links': return { ...base, items: (b.items || []).slice(0, 40).map((i) => ({ title: str(i.title, 200), url: str(i.url, 2000) })) };
+        case 'links': return {
+          ...base,
+          items: (b.items || []).slice(0, 40).map((i) => (FILE_ID.test(i.fileId)
+            ? { title: str(i.title, 200), url: '', fileId: i.fileId, fileName: str(i.fileName, 200) }
+            : { title: str(i.title, 200), url: str(i.url, 2000) })),
+        };
         case 'quote': return { ...base, text: str(b.text, 1000), author: str(b.author, 200) };
         default: return base;
       }
@@ -169,7 +182,7 @@ app.post('/api/projects', requireAuth, requireActive, (req, res) => {
 
 app.get('/api/projects/:id', requireAuth, (req, res) => {
   const p = loadProject(req, res);
-  if (p) res.json({ project: { id: p.id, title: p.title, data: p.data, updated_at: p.updated_at } });
+  if (p) res.json({ project: { id: p.id, title: p.title, data: p.data, updated_at: p.updated_at, baseUrl: baseUrl(req) } });
 });
 
 app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
@@ -203,7 +216,7 @@ app.get('/api/projects/:id/preview', requireAuth, async (req, res, next) => {
   try {
     const p = loadProject(req, res);
     if (!p) return;
-    res.type('html').send(await renderProject(p, { screen: true }));
+    res.type('html').send(await renderProject(p, { screen: true, baseUrl: baseUrl(req) }));
   } catch (e) { next(e); }
 });
 
@@ -211,7 +224,7 @@ app.get('/api/projects/:id/pdf', requireAuth, requireActive, async (req, res, ne
   try {
     const p = loadProject(req, res);
     if (!p) return;
-    const pdf = await projectToPdf(p);
+    const pdf = await projectToPdf(p, baseUrl(req));
     const name = encodeURIComponent((p.title || 'ملف-إنجاز').replace(/[\\/:*?"<>|]/g, '-') + '.pdf');
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${name}` });
     res.send(Buffer.from(pdf));
@@ -240,6 +253,51 @@ app.get('/api/uploads/:id', requireAuth, (req, res) => {
   const file = row && path.join(DATA_DIR, 'uploads', row.id);
   if (!row || !fs.existsSync(file)) return res.status(404).end();
   res.type(row.mime).set('Cache-Control', 'private, max-age=31536000').sendFile(file);
+});
+
+// ---------- ملفات الشواهد ----------
+const ALLOWED_FILE = /^(application\/pdf|image\/(png|jpe?g|webp|gif)|application\/(msword|vnd\.openxmlformats-officedocument\.(wordprocessingml\.document|spreadsheetml\.sheet|presentationml\.presentation)|vnd\.ms-excel|vnd\.ms-powerpoint)|text\/plain|video\/mp4|audio\/mpeg)$/;
+const fileUpload = multer({
+  storage: multer.diskStorage({
+    destination: path.join(DATA_DIR, 'files'),
+    filename: (_req, _file, cb) => cb(null, crypto.randomBytes(16).toString('hex')),
+  }),
+  limits: { fileSize: FILE_MAX_MB * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, ALLOWED_FILE.test(file.mimetype)),
+});
+
+app.post('/api/files', requireAuth, requireActive, (req, res, next) => {
+  fileUpload.single('file')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `حجم الملف أكبر من ${FILE_MAX_MB} ميجابايت` : 'تعذر رفع الملف' });
+    if (!req.file) return res.status(400).json({ error: 'نوع الملف غير مدعوم. المسموح: PDF، Word، Excel، PowerPoint، الصور، MP4' });
+    const used = db.prepare('SELECT COALESCE(SUM(size),0) AS s FROM files WHERE user_id = ?').get(req.user.id).s;
+    if (used + req.file.size > STORAGE_QUOTA_MB * 1024 * 1024) {
+      fs.unlink(req.file.path, () => {});
+      return res.status(400).json({ error: 'تجاوزت المساحة المتاحة لحسابك' });
+    }
+    // multer يقرأ أسماء الملفات العربية بترميز latin1
+    const name = Buffer.from(req.file.originalname, 'latin1').toString('utf8');
+    db.prepare('INSERT INTO files (id, user_id, filename, mime, size) VALUES (?, ?, ?, ?, ?)')
+      .run(req.file.filename, req.user.id, str(name, 200), req.file.mimetype, req.file.size);
+    res.json({ id: req.file.filename, name, url: `${baseUrl(req)}/f/${req.file.filename}` });
+  });
+});
+
+// رابط عام للملف (هو ما يفتحه رمز QR) — الرمز عشوائي وطويل فلا يمكن تخمينه
+app.get('/f/:id', (req, res) => {
+  if (!FILE_ID.test(req.params.id)) return res.status(404).send('الملف غير موجود');
+  const row = db.prepare('SELECT * FROM files WHERE id = ?').get(req.params.id);
+  const file = row && path.join(DATA_DIR, 'files', row.id);
+  if (!row || !fs.existsSync(file)) return res.status(404).send('الملف غير موجود');
+  const inline = /^(application\/pdf|image\/|video\/|audio\/|text\/plain)/.test(row.mime);
+  res.set({
+    'Content-Type': row.mime,
+    'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(row.filename)}`,
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'",
+    'Cache-Control': 'public, max-age=86400',
+  });
+  res.sendFile(file);
 });
 
 app.get('/api/qr', requireAuth, async (req, res) => {

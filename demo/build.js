@@ -37,6 +37,7 @@ const extra = {
     ['/api/uploads/${esc(it.uploadId)}', '${uploadUrl(it.uploadId)}'],
     ['/api/qr?u=${encodeURIComponent(url.trim())}', '${qrDataUrl(url.trim())}'],
     ["const w = window.open('about:blank', '_blank');", 'const w = null;'],
+    ['href="${esc(fileLink(it.fileId))}"', 'href="${esc(demoFileHref(it.fileId))}"'],
     ['location.href = `/api/projects/${projectId}/preview`', "location.href = 'preview.html#p' + projectId"],
   ],
 };

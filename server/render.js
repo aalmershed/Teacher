@@ -97,7 +97,7 @@ async function renderBlock(b, ctx, wide) {
     }
     case 'links': {
       const rows = await Promise.all((b.items || []).map(async (it) => {
-        const url = safeUrl(it.url);
+        const url = it.fileId ? ctx.fileUrl(it.fileId) : safeUrl(it.url);
         const qr = url ? await QRCode.toString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: ctx.theme.ink, light: '#0000' } }) : '';
         const pill = url ? `<a class="pill" href="${esc(url)}">${esc(it.title)}</a>` : `<span class="pill">${esc(it.title)}</span>`;
         return `<div class="lk">${pill}${qr ? `<a class="qr" href="${esc(url)}">${qr}</a>` : ''}</div>`;
@@ -209,7 +209,12 @@ async function renderProject(project, opts = {}) {
 
   const cover = pages.find((p) => p.type === 'cover');
   const teacher = cover ? fieldsMap(cover)['الاسم'] : '';
-  const ctx = { theme, tocEntries, imageUrl: opts.imageUrl || ((id) => `/api/uploads/${id}`) };
+  const baseUrl = String(opts.baseUrl || '').replace(/\/+$/, '');
+  const ctx = {
+    theme, tocEntries,
+    imageUrl: opts.imageUrl || ((id) => `/api/uploads/${id}`),
+    fileUrl: (id) => `${baseUrl}/f/${id}`,
+  };
 
   const pattern = layout === 'single' ? coverPattern(theme, 210, 297) : coverPattern(theme, 297, 210);
   const out = [];

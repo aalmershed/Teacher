@@ -49,8 +49,8 @@ function imageDataUrl(userId) {
   };
 }
 
-async function projectToPdf(project) {
-  const html = await renderProject(project, { embedFonts: true, imageUrl: imageDataUrl(project.user_id) });
+async function projectToPdf(project, baseUrl) {
+  const html = await renderProject(project, { embedFonts: true, baseUrl, imageUrl: imageDataUrl(project.user_id) });
   const page = await newPage();
   try {
     await page.setContent(html, { waitUntil: 'load' });

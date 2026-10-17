@@ -110,6 +110,17 @@
     return { id };
   }
 
+  async function handleFile(body) {
+    const u = auth(); active(u);
+    const file = body.get('file');
+    if (!file) throw new HttpError(400, 'لم يتم اختيار ملف');
+    if (file.size > 3 * 1024 * 1024) throw new HttpError(400, 'في النسخة التجريبية الحد الأقصى 3 ميجابايت (في النسخة الكاملة 25)');
+    const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+    const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), (x) => x.toString(16).padStart(2, '0')).join('');
+    store.set('file:' + id, dataUrl);
+    return { id, name: file.name };
+  }
+
   const json = (status, obj) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json' } });
   const realFetch = window.fetch.bind(window);
   window.fetch = async function (input, opts = {}) {
@@ -120,6 +131,7 @@
     const method = (opts.method || 'GET').toUpperCase();
     try {
       if (method === 'POST' && path === '/api/uploads') return json(200, await handleUpload(opts.body));
+      if (method === 'POST' && path === '/api/files') return json(200, await handleFile(opts.body));
       for (const [m, re, fn] of routes) {
         const match = m === method && path.match(re);
         if (match) return json(200, fn(opts.body ? JSON.parse(opts.body) : {}, match[1] ? Number(match[1]) : undefined));
@@ -139,6 +151,22 @@
     for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (qr.modules.get(x, y)) d += `M${x} ${y}h1v1h-1z`;
     return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="-1 -1 ${n + 2} ${n + 2}"><rect x="-1" y="-1" width="${n + 2}" height="${n + 2}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`);
   };
+  window.demoFileHref = (id) => store.get('file:' + id, '#');
+  // XHR لرفع الملفات يمر عبر fetch الوهمي في النسخة التجريبية
+  const RealXHR = window.XMLHttpRequest;
+  window.XMLHttpRequest = function () {
+    const xhr = { upload: {}, status: 0, responseText: '' };
+    let url = '';
+    xhr.open = (m, u) => { url = u; };
+    xhr.send = async (body) => {
+      if (xhr.upload.onprogress) xhr.upload.onprogress({ lengthComputable: true, loaded: 1, total: 1 });
+      const r = await window.fetch(url, { method: 'POST', body });
+      xhr.status = r.status; xhr.responseText = await r.text();
+      xhr.onload && xhr.onload();
+    };
+    return xhr;
+  };
+  window.XMLHttpRequest.real = RealXHR;
   window.demoProjectId = () => {
     const m = location.hash.match(/\d+/);
     if (m) { store.set('current', Number(m[0])); return Number(m[0]); }

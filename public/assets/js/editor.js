@@ -22,6 +22,7 @@ let dirty = false;
 let saving = false;
 let saveTimer = null;
 let uploadTarget = null;
+let docTarget = null;
 
 // ---------- تحميل ----------
 (async function init() {
@@ -277,20 +278,33 @@ function blockBody(b, bi, locked, dis) {
         </div>`).join('')}</div>
         ${readOnly ? '' : `<button class="btn sm" style="margin-top:10px" data-act="addImage" data-b="${bi}">＋ إضافة صورة</button>`}`;
     case 'links':
-      return `<p class="muted" style="margin:0 0 10px;font-size:.88em">ضع رابط الشاهد (مثل Google Drive) وسيظهر في الملف زرًا قابلًا للنقر مع رمز QR تلقائي.</p>`
+      return `<p class="muted" style="margin:0 0 10px;font-size:.88em">ارفع ملف الشاهد مباشرة (PDF، Word، صور...) أو ضع رابطًا، وسيظهر في الملف زرًا قابلًا للنقر مع رمز QR تلقائي.</p>`
         + b.items.map((it, i) => `<div class="lrow">
-          <input class="input t" ${at(`items.${i}.title`)} value="${esc(it.title)}" placeholder="عنوان الرابط" ${dis}>
-          <input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://..." dir="ltr" ${dis}>
-          <div class="qr" data-qr="${bi}-${i}">${qrImg(it.url)}</div>
+          <input class="input t" ${at(`items.${i}.title`)} value="${esc(it.title)}" placeholder="عنوان الشاهد" ${dis}>
+          <div class="src" data-src="${bi}-${i}">${linkSource(it, bi, i, at, dis)}</div>
+          <div class="qr" data-qr="${bi}-${i}">${qrImg(itemUrl(it))}</div>
           ${readOnly ? '<span></span>' : `<button class="btn icon ghost danger sm" data-act="rmItem" data-b="${bi}" data-i="${i}" title="حذف">✕</button>`}
         </div>`).join('')
-        + (readOnly ? '' : `<button class="btn sm" data-act="addLink" data-b="${bi}">＋ إضافة رابط</button>`);
+        + (readOnly ? '' : `<button class="btn sm" data-act="addLink" data-b="${bi}">＋ إضافة شاهد</button>`);
     case 'quote':
       return `<div class="field"><label>نص الاقتباس</label><textarea class="input" rows="2" ${at('text')} ${dis}>${esc(b.text)}</textarea></div>
         <div class="field" style="margin:0"><label>القائل</label><input class="input" ${at('author')} value="${esc(b.author)}" ${dis}></div>`;
     default:
       return '';
   }
+}
+
+// رابط الشاهد: الملف المرفوع له رابط عام على الموقع، وإلا الرابط الذي كتبه المعلم
+const fileLink = (id) => `${project.baseUrl || location.origin}/f/${id}`;
+const itemUrl = (it) => (it.fileId ? fileLink(it.fileId) : (it.url || '').trim());
+
+function linkSource(it, bi, i, at, dis) {
+  if (it.fileId) {
+    return `<span class="fchip" title="${esc(it.fileName)}">📄 <a href="${esc(fileLink(it.fileId))}" target="_blank" rel="noopener">${esc(it.fileName || 'ملف مرفوع')}</a></span>
+      ${readOnly ? '' : `<button class="btn sm" data-act="attach" data-b="${bi}" data-i="${i}" title="استبدال الملف">⇄</button><button class="btn sm ghost" data-act="detach" data-b="${bi}" data-i="${i}" title="إزالة الملف">✕</button>`}`;
+  }
+  return `<input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://... أو ارفع ملف" dir="ltr" ${dis}>
+    ${readOnly ? '' : `<button class="btn sm accent" data-act="attach" data-b="${bi}" data-i="${i}" title="رفع ملف">📎 رفع ملف</button>`}`;
 }
 
 const qrImg = (url) => (url && url.trim() ? `<img src="/api/qr?u=${encodeURIComponent(url.trim())}" alt="QR">` : 'QR');
@@ -404,6 +418,13 @@ area.addEventListener('click', (e) => {
       break;
     case 'addItem': b.items.push({ label: '', value: '' }); break;
     case 'addLink': b.items.push({ title: '', url: '' }); break;
+    case 'attach':
+      rerender = false;
+      docTarget = { page: cur, bi, i };
+      $('docInput').value = '';
+      $('docInput').click();
+      break;
+    case 'detach': delete b.items[i].fileId; delete b.items[i].fileName; b.items[i].url = ''; break;
     case 'addImage': b.items.push({ uploadId: '', caption: '' }); break;
     case 'rmItem': e.stopPropagation(); b.items.splice(i, 1); break;
     case 'addRow': b.rows.push(b.columns.map(() => '')); break;
@@ -457,3 +478,44 @@ async function shrinkImage(file, max = 1800) {
     return file;
   }
 }
+
+// ---------- رفع ملفات الشواهد ----------
+function uploadWithProgress(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => {
+      let data = null;
+      try { data = JSON.parse(xhr.responseText); } catch (_) {}
+      if (xhr.status >= 200 && xhr.status < 300 && data) resolve(data);
+      else reject(new Error((data && data.error) || 'تعذر رفع الملف'));
+    };
+    xhr.onerror = () => reject(new Error('انقطع الاتصال أثناء الرفع'));
+    const fd = new FormData();
+    fd.append('file', file);
+    xhr.send(fd);
+  });
+}
+
+$('docInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file || !docTarget) return;
+  const { page, bi, i } = docTarget;
+  const cell = area.querySelector(`.src[data-src="${bi}-${i}"]`);
+  const show = (pct) => { if (cell && page === cur) cell.innerHTML = `<div class="upbar"><span style="width:${pct}%"></span></div><span class="muted" style="font-size:.85em;white-space:nowrap">جارٍ الرفع ${pct}%</span>`; };
+  show(0);
+  try {
+    const { id, name } = await uploadWithProgress('/api/files', file, show);
+    const item = pages()[page].blocks[bi].items[i];
+    item.fileId = id;
+    item.fileName = name;
+    item.url = '';
+    if (!item.title.trim() || item.title === 'رابط جديد') item.title = name.replace(/\.[^.]+$/, '');
+    markDirty();
+    toast('تم رفع الملف وإنشاء رمز QR له', 'ok');
+  } catch (err) {
+    toast(err.message, 'err');
+  }
+  if (page === cur) renderPage();
+});

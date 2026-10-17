@@ -4,6 +4,7 @@ const { DatabaseSync } = require('node:sqlite');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '..', 'data');
 fs.mkdirSync(path.join(DATA_DIR, 'uploads'), { recursive: true });
+fs.mkdirSync(path.join(DATA_DIR, 'files'), { recursive: true });
 
 const db = new DatabaseSync(path.join(DATA_DIR, 'app.db'));
 db.exec(`
@@ -67,6 +68,17 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  -- ملفات الشواهد (PDF، Word، صور...) — لها رابط عام برمز عشوائي يُستخدم في QR
+  CREATE TABLE IF NOT EXISTS files (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    mime TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
   CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
   CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
 `);
