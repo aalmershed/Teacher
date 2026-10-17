@@ -267,7 +267,7 @@ function css(t, layout) {
 @page{size:${W}mm ${H}mm;margin:0}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 html,body{margin:0;padding:0}
-body{font-family:'Tajawal',sans-serif;color:${t.ink};font-size:3.6mm;line-height:1.65}
+body{font-family:'Tajawal',sans-serif;color:${t.ink};font-size:3.6mm;line-height:1.65;text-align:right;direction:rtl}
 body.screen{background:#8a8f94;padding:8mm 0}
 body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .sheet{width:${W}mm;height:${H}mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;
@@ -299,8 +299,9 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .grid2>.blk{margin-bottom:0}
 .bh{display:inline-block;background:${t.accent2};color:#fff;font-weight:700;font-size:3.7mm;padding:.6mm 4mm .3mm;border-radius:1.5mm;margin-bottom:2mm}
 
+.rich{text-align:right}
 .rich p{margin:0 0 2mm}
-.rich ul,.rich ol{margin:0 0 2mm;padding-inline-start:5.5mm}
+.rich ul,.rich ol{margin:0 0 2mm;padding-inline-start:5.5mm;list-style-position:outside}
 .rich li{margin-bottom:.8mm}
 .rich h3{font-size:4.2mm;color:${t.accent};margin:0 0 1.5mm}
 .rich h4{font-size:3.8mm;color:${t.accent2};margin:0 0 1.2mm}
