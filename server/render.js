@@ -85,7 +85,7 @@ async function renderBlock(b, ctx, wide) {
       const one = (it, k) => {
         const src = it.uploadId ? ctx.imageUrl(it.uploadId) : '';
         const inner = src ? `<img src="${esc(src)}" alt="">` : '';
-        return `<figure class="img ${shapes[k % 6]} ${src ? '' : tints[k % 3]}">${inner ? `<div class="ib">${inner}</div>` : '<div class="ib"></div>'}${it.caption ? `<figcaption>${esc(it.caption)}</figcaption>` : ''}</figure>`;
+        return `<figure class="img ${shapes[k % 6]} ${src ? 'has' : tints[k % 3]}">${inner ? `<div class="ib">${inner}</div>` : '<div class="ib"></div>'}${it.caption ? `<figcaption>${esc(it.caption)}</figcaption>` : ''}</figure>`;
       };
       if (wide && items.length > 1) {
         const half = Math.ceil(items.length / 2);
@@ -248,7 +248,8 @@ const FIT_SCRIPT = `
   function fit(){
     document.querySelectorAll('.content').forEach(function(el){
       var s=1; el.style.fontSize='';
-      while((el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)&&s>0.5){s-=0.04;el.style.fontSize=s+'em';}
+      el.style.removeProperty('--fit');
+      while((el.scrollHeight>el.clientHeight+1||el.scrollWidth>el.clientWidth+1)&&s>0.5){s-=0.04;el.style.fontSize=s+'em';el.style.setProperty('--fit',s);}
     });
     document.body.setAttribute('data-fitted','1');
   }
@@ -325,6 +326,11 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .img .ib{width:100%;aspect-ratio:1.15;overflow:hidden;box-shadow:0 .8mm 2mm rgba(0,0,0,.12)}
 .imgs.n1 .img .ib{aspect-ratio:1.6;border-radius:4mm!important}
 .img img{width:100%;height:100%;object-fit:cover;display:block}
+/* الصورة المرفوعة تظهر كاملة بدون قص؛ الأشكال الزخرفية للخانات الفارغة فقط */
+.img.has .ib{border-radius:3mm!important;background:#fff;box-shadow:0 .8mm 2mm rgba(0,0,0,.1)}
+.img.has img{object-fit:contain}
+.imgs.n1 .img.has .ib{aspect-ratio:auto;background:transparent;box-shadow:none;overflow:visible}
+.imgs.n1 .img.has img{width:auto;height:auto;max-width:100%;max-height:calc(var(--fit,1) * 125mm);margin:0 auto;border-radius:3mm;box-shadow:0 .8mm 2mm rgba(0,0,0,.1)}
 .img.t1 .ib{background:${t.panel};background:color-mix(in srgb,${t.frame} 55%,#fff)}
 .img.t2 .ib{background:color-mix(in srgb,${t.sand} 85%,#fff)}
 .img.t3 .ib{background:color-mix(in srgb,${t.frame2} 45%,#fff)}
