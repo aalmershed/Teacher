@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة الإدارة — إنجاز</title>
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+main{padding:26px 0 60px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.stat{padding:18px}
+.stat b{display:block;font-size:2em;color:var(--brand-d)}
+.tw{overflow:auto}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{padding:.7em .8em;border-bottom:1px solid var(--line);text-align:right}
+th{background:#fcfbf9;font-size:.9em}
+</style>
+</head>
+<body>
+<header class="topbar"><div class="container"><a class="logo" href="/app"><span class="logo-mark">إن</span>إنجاز</a><span class="badge">الإدارة</span><div class="spacer"></div><a class="btn" href="/app">← ملفاتي</a></div></header>
+<main class="container">
+  <div class="stats" id="stats"></div>
+  <div class="card tw">
+    <table><thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الجوال</th><th>التسجيل</th><th>الملفات</th><th>الاشتراك</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+</main>
+<script src="/assets/js/common.js"></script>
+<script>
+async function load() {
+  try {
+    const { users, stats } = await api('GET', '/api/admin/users');
+    document.getElementById('stats').innerHTML = `
+      <div class="card stat">المستخدمون<b>${stats.users}</b></div>
+      <div class="card stat">اشتراكات فعالة<b>${stats.active}</b></div>
+      <div class="card stat">الإيرادات (ر.س)<b>${stats.revenue}</b></div>`;
+    document.getElementById('rows').innerHTML = users.map((u) => `<tr>
+      <td>${u.id}</td><td>${esc(u.name)}</td><td dir="ltr" style="text-align:right">${esc(u.email)}</td><td dir="ltr" style="text-align:right">${esc(u.phone || '')}</td>
+      <td>${fmtDate(u.created_at)}</td><td>${u.projects}</td><td>${subBadge(u.subscription)}</td>
+      <td><button class="btn sm" onclick="grant(${u.id},'monthly')">+ شهر</button> <button class="btn sm" onclick="grant(${u.id},'yearly')">+ سنة</button></td></tr>`).join('');
+  } catch (e) {
+    if (e.status === 401) location.href = '/login?next=/admin';
+    else document.querySelector('main').innerHTML = `<div class="empty-state"><p>${esc(e.message)}</p></div>`;
+  }
+}
+async function grant(id, plan) {
+  try { await api('POST', `/api/admin/users/${id}/grant`, { plan }); toast('تم تفعيل الاشتراك', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
+}
+load();
+</script>
+</body>
+</html>

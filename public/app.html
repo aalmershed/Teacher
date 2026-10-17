@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ملفاتي — إنجاز</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#5f978f">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+main{padding:28px 0 60px}
+.head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.head h1{font-size:1.7em;margin:0}
+.banner{padding:16px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px;background:var(--accent-l);border-color:#efcfb6}
+.banner p{margin:0;flex:1;min-width:220px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.proj{overflow:hidden;display:flex;flex-direction:column}
+.thumb{aspect-ratio:1.6;background:var(--brand);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.14) 0 8px,transparent 8px 24px);display:grid;place-items:center;cursor:pointer;text-decoration:none}
+.thumb span{background:rgba(255,255,255,.93);padding:10px 20px;border-radius:12px;font-weight:800;color:var(--brand-d);max-width:80%;text-align:center}
+.proj .body{padding:14px 16px;flex:1}
+.proj h3{font-size:1.05em;margin:0 0 4px}
+.proj .acts{display:flex;gap:6px;padding:0 12px 14px;flex-wrap:wrap}
+.new-tile{border:2px dashed #c9d9d5;display:grid;place-items:center;min-height:250px;cursor:pointer;color:var(--brand-d);font-weight:800;background:#fbfdfc;transition:.15s}
+.new-tile:hover{border-color:var(--brand);background:var(--brand-l)}
+.new-tile .plus{font-size:2.6em;line-height:1}
+.menu{position:relative}
+.menu-pop{position:absolute;top:110%;left:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-l);min-width:200px;padding:6px;display:none;z-index:30}
+.menu-pop.open{display:block}
+.menu-pop button,.menu-pop a{display:block;width:100%;text-align:right;background:none;border:0;padding:.55em .8em;border-radius:8px;cursor:pointer;text-decoration:none;color:var(--ink)}
+.menu-pop button:hover,.menu-pop a:hover{background:var(--bg)}
+@media (max-width:560px){.hide-sm{display:none}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="container">
+    <a class="logo" href="/app"><span class="logo-mark">إن</span>إنجاز</a>
+    <div class="spacer"></div>
+    <span id="subBadge" class="hide-sm"></span>
+    <div class="menu">
+      <button class="btn" id="userBtn">👤 <span id="userName"></span></button>
+      <div class="menu-pop" id="userMenu">
+        <button onclick="openAccount()">إعدادات الحساب</button>
+        <a href="/subscribe">الاشتراك والتجديد</a>
+        <a href="/admin" id="adminLink" style="display:none">لوحة الإدارة</a>
+        <button onclick="logout()" style="color:var(--danger)">تسجيل الخروج</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <div class="card banner" id="subBanner" style="display:none">
+    <p><b>اشتراكك غير مفعل.</b> يمكنك استعراض ملفاتك، لكن الإنشاء والتعديل والتصدير يتطلب اشتراكًا فعالًا.</p>
+    <a class="btn accent" href="/subscribe">فعّل اشتراكك</a>
+  </div>
+
+  <div class="head">
+    <h1>ملفاتي</h1>
+    <div class="spacer"></div>
+    <button class="btn primary lg" onclick="openNew()">＋ إنشاء ملف جديد</button>
+  </div>
+
+  <div class="grid" id="grid"><div class="muted"><span class="spinner dark"></span></div></div>
+</main>
+
+<div class="modal-bg" id="newModal">
+  <div class="modal">
+    <h3>ملف إنجاز جديد</h3>
+    <p class="muted" style="margin-top:0">سيُنشأ ملف يحتوي على جميع صفحات القالب بعناوينها، وتقدر تعدّلها كما تريد.</p>
+    <div class="field"><label for="newTitle">اسم الملف</label><input class="input" id="newTitle" value="ملف إنجاز 1448"></div>
+    <div class="field"><label>نمط الألوان</label><div class="theme-pick" id="themePick"></div></div>
+    <div class="modal-actions">
+      <button class="btn primary" id="createBtn" onclick="createProject()">إنشاء وفتح الملف</button>
+      <button class="btn" data-close>إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="accModal">
+  <div class="modal">
+    <h3>إعدادات الحساب</h3>
+    <div class="field"><label for="accName">الاسم</label><input class="input" id="accName"></div>
+    <div class="field"><label for="accPhone">الجوال</label><input class="input" id="accPhone" dir="ltr"></div>
+    <details><summary style="cursor:pointer;font-weight:700;margin-bottom:10px">تغيير كلمة المرور</summary>
+      <div class="field"><label for="accCur">كلمة المرور الحالية</label><input class="input" id="accCur" type="password" dir="ltr"></div>
+      <div class="field"><label for="accNew">كلمة المرور الجديدة</label><input class="input" id="accNew" type="password" dir="ltr"></div>
+    </details>
+    <div class="modal-actions">
+      <button class="btn primary" onclick="saveAccount()">حفظ</button>
+      <button class="btn" data-close>إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="delModal">
+  <div class="modal">
+    <h3>حذف الملف</h3>
+    <p>هل أنت متأكد من حذف «<b id="delName"></b>»؟ لا يمكن التراجع عن هذا الإجراء.</p>
+    <div class="modal-actions">
+      <button class="btn danger" id="delConfirm">نعم، احذف</button>
+      <button class="btn" data-close>إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<script src="/assets/js/common.js"></script>
+<script>
+let user, selTheme = 'mint', delId = null, projectList = [];
+
+document.getElementById('userBtn').onclick = (e) => { e.stopPropagation(); document.getElementById('userMenu').classList.toggle('open'); };
+document.addEventListener('click', () => document.getElementById('userMenu').classList.remove('open'));
+
+function guardActive() {
+  if (user.subscription.active || user.isAdmin) return true;
+  toast('فعّل اشتراكك أولًا', 'err');
+  setTimeout(() => { location.href = '/subscribe'; }, 900);
+  return false;
+}
+
+async function load() {
+  user = await currentUser();
+  if (!user) return;
+  document.getElementById('userName').textContent = user.name;
+  document.getElementById('subBadge').innerHTML = subBadge(user.subscription);
+  document.getElementById('subBanner').style.display = user.subscription.active || user.isAdmin ? 'none' : 'flex';
+  document.getElementById('adminLink').style.display = user.isAdmin ? 'block' : 'none';
+  await loadProjects();
+  const { themes } = await api('GET', '/api/themes');
+  document.getElementById('themePick').innerHTML = themes.map((t) => `
+    <div class="theme-opt ${t.id === selTheme ? 'sel' : ''}" data-id="${t.id}">
+      <div class="theme-sw">${t.colors.map((c) => `<span style="background:${c}"></span>`).join('')}</div>${esc(t.name)}</div>`).join('');
+  document.querySelectorAll('.theme-opt').forEach((el) => el.onclick = () => {
+    selTheme = el.dataset.id;
+    document.querySelectorAll('.theme-opt').forEach((x) => x.classList.toggle('sel', x === el));
+  });
+}
+
+async function loadProjects() {
+  const { projects } = await api('GET', '/api/projects');
+  projectList = projects;
+  const grid = document.getElementById('grid');
+  const tiles = projects.map((p) => `
+    <div class="card proj">
+      <a class="thumb" href="/editor/${p.id}"><span>${esc(p.title)}</span></a>
+      <div class="body"><h3>${esc(p.title)}</h3><div class="muted" style="font-size:.88em">آخر تعديل: ${fmtDate(p.updated_at)}</div></div>
+      <div class="acts">
+        <a class="btn sm primary" href="/editor/${p.id}">فتح وتعديل</a>
+        <a class="btn sm" href="/api/projects/${p.id}/preview" target="_blank">معاينة</a>
+        <button class="btn sm" onclick="downloadPdf(${p.id}, this)">PDF</button>
+        <button class="btn sm ghost" title="نسخ" onclick="dup(${p.id})">⧉</button>
+        <button class="btn sm ghost danger" title="حذف" onclick="askDel(${p.id})">🗑</button>
+      </div>
+    </div>`);
+  grid.innerHTML = `<div class="card new-tile" onclick="openNew()"><div style="text-align:center"><div class="plus">＋</div>إنشاء ملف جديد</div></div>` + tiles.join('');
+}
+
+function openNew() {
+  if (!guardActive()) return;
+  openModal('newModal');
+  setTimeout(() => document.getElementById('newTitle').select(), 50);
+}
+
+async function createProject() {
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true;
+  try {
+    const { id } = await api('POST', '/api/projects', { title: document.getElementById('newTitle').value, theme: selTheme });
+    location.href = '/editor/' + id;
+  } catch (e) { toast(e.message, 'err'); btn.disabled = false; }
+}
+
+async function dup(id) {
+  if (!guardActive()) return;
+  try { await api('POST', `/api/projects/${id}/duplicate`); toast('تم نسخ الملف', 'ok'); loadProjects(); } catch (e) { toast(e.message, 'err'); }
+}
+
+function askDel(id) {
+  delId = id;
+  document.getElementById('delName').textContent = projectList.find((p) => p.id === id)?.title || '';
+  openModal('delModal');
+}
+document.getElementById('delConfirm').onclick = async () => {
+  try { await api('DELETE', '/api/projects/' + delId); closeModal('delModal'); toast('تم حذف الملف'); loadProjects(); } catch (e) { toast(e.message, 'err'); }
+};
+
+function openAccount() {
+  document.getElementById('accName').value = user.name;
+  document.getElementById('accPhone').value = user.phone || '';
+  openModal('accModal');
+}
+async function saveAccount() {
+  const v = (id) => document.getElementById(id).value;
+  try {
+    const r = await api('PUT', '/api/me', { name: v('accName'), phone: v('accPhone'), currentPassword: v('accCur'), newPassword: v('accNew') });
+    user = r.user;
+    document.getElementById('userName').textContent = user.name;
+    closeModal('accModal');
+    toast('تم حفظ التغييرات', 'ok');
+  } catch (e) { toast(e.message, 'err'); }
+}
+
+load();
+</script>
+</body>
+</html>
