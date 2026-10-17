@@ -258,9 +258,9 @@ function blockBody(b, bi, locked, dis) {
         <div class="rte" ${at('html')} contenteditable="${!readOnly}">${b.html || ''}</div>`;
     case 'fields':
       return b.items.map((it, i) => locked
-        ? `<div class="frow locked"><span class="lbl">${esc(it.label)}</span><input class="input" ${at(`items.${i}.value`)} value="${esc(it.value)}" ${dis}></div>`
+        ? `<div class="frow locked"><span class="lbl">${esc(it.label)}</span>${FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<input class="input" ${at(`items.${i}.value`)} value="${esc(it.value)}" ${dis}>`}</div>`
         : `<div class="frow"><input class="input lab" ${at(`items.${i}.label`)} value="${esc(it.label)}" placeholder="البند" ${dis}>
-           <textarea class="input" rows="1" ${at(`items.${i}.value`)} placeholder="القيمة" ${dis}>${esc(it.value)}</textarea>
+           ${FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<textarea class="input" rows="1" ${at(`items.${i}.value`)} placeholder="القيمة" ${dis}>${esc(it.value)}</textarea>`}
            ${readOnly ? '' : `<button class="btn icon ghost danger sm" data-act="rmItem" data-b="${bi}" data-i="${i}" title="حذف">✕</button>`}</div>`).join('')
         + (locked || readOnly ? '' : `<button class="btn sm" data-act="addItem" data-b="${bi}">＋ إضافة بند</button>`);
     case 'table': {
@@ -308,6 +308,38 @@ function linkSource(it, bi, i, at, dis) {
   }
   return `<input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://... أو ارفع ملف" dir="ltr" ${dis}>
     ${readOnly ? '' : `<button class="btn sm accent" data-act="attach" data-b="${bi}" data-i="${i}" title="رفع ملف">📎 رفع ملف</button>`}`;
+}
+
+// حقول لها قائمة اختيارات ثابتة بدل الكتابة الحرة
+const FIELD_OPTIONS = {
+  'إدارة التعليم': [
+    'الإدارة العامة للتعليم بمنطقة القصيم',
+    'الإدارة العامة للتعليم بمحافظة الأحساء',
+    'الإدارة العامة للتعليم بالمنطقة الشرقية',
+    'الإدارة العامة للتعليم بمنطقة تبوك',
+    'الإدارة العامة للتعليم بمنطقة جازان',
+    'الإدارة العامة للتعليم بمنطقة الحدود الشمالية',
+    'الإدارة العامة للتعليم بمنطقة عسير',
+    'إدارة التعليم بمحافظة الطائف',
+    'الإدارة العامة للتعليم بمنطقة نجران',
+    'الإدارة العامة للتعليم بمنطقة الجوف',
+    'الإدارة العامة للتعليم بمنطقة حائل',
+    'الإدارة العامة للتعليم بمنطقة الباحة',
+    'الإدارة العامة للتعليم بمنطقة مكة المكرمة',
+    'الإدارة العامة للتعليم بمنطقة الرياض',
+    'الإدارة العامة للتعليم بمحافظة جدة',
+    'الإدارة العامة للتعليم بمنطقة المدينة المنورة',
+  ],
+};
+
+function optionsSelect(it, attrs, dis) {
+  const opts = FIELD_OPTIONS[it.label];
+  // قيمة قديمة مكتوبة يدويًا تبقى ظاهرة حتى يختار المعلم من القائمة
+  const extra = it.value && !opts.includes(it.value) ? [it.value] : [];
+  return `<select class="input" ${attrs} ${dis}>
+    <option value="">اختر ${esc(it.label)}...</option>
+    ${[...extra, ...opts].map((o) => `<option value="${esc(o)}" ${o === it.value ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+  </select>`;
 }
 
 const qrImg = (url) => (url && url.trim() ? `<img src="/api/qr?u=${encodeURIComponent(url.trim())}" alt="QR">` : 'QR');
