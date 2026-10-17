@@ -147,10 +147,10 @@ function renderToc(page, ctx, full) {
 }
 
 function renderOpening(page, ctx, full) {
+  // صفحة البسملة فقط (بدون اسم المعلم أو عنوان الملف)
   const f = fieldsMap(page);
-  const title = `<div class="op-title"><div class="op-card"><div class="op-h">${esc(f['عنوان الملف'] || 'ملف إنجاز')}</div><div class="op-n">${esc(f['الاسم'] || '')}</div></div></div>`;
   const basmala = `<div class="op-basmala"><div class="bsm">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</div>${f['الآية'] ? `<div class="aya">${esc(f['الآية'])}</div>` : ''}</div>`;
-  return `<section class="panel opening${full ? ' full' : ''}" id="p-${esc(page.id)}"><div class="content grid2 opgrid">${title}${basmala}</div></section>`;
+  return `<section class="panel opening${full ? ' full' : ''}" id="p-${esc(page.id)}"><div class="content opgrid">${basmala}</div></section>`;
 }
 
 function renderCover(page) {
@@ -180,7 +180,8 @@ function coverPattern(t, W, H) {
 // الصفحة النصية لا تمتد على صفحتي الدفتر أبدًا حتى لا ينقسم النص بينهما؛
 // الامتداد فقط للصفحات التي فيها صور أو جداول أو أكثر من نوع محتوى
 const TEXTUAL = new Set(['text', 'quote', 'fields']);
-const spansSpread = (p) => p.width === 'full' && !(p.blocks.length && p.blocks.every((b) => TEXTUAL.has(b.type)));
+const spansSpread = (p) => p.type === 'opening' || p.type === 'toc'
+  || (p.width === 'full' && !(p.blocks.length && p.blocks.every((b) => TEXTUAL.has(b.type))));
 
 function buildSheets(pages, layout) {
   const sheets = [];
@@ -228,7 +229,11 @@ async function renderProject(project, opts = {}) {
     if (s.kind === 'cover') out.push(`<div class="sheet cover">${pattern}${renderCover(s.pages[0])}</div>`);
     else if (s.kind === 'backcover') out.push(`<div class="sheet cover back">${pattern}<div class="back-mark">${esc(BRAND)}</div></div>`);
     else if (s.kind === 'one') out.push(`<div class="sheet one">${await renderPanel(s.pages[0], ctx, false)}${foot}</div>`);
-    else if (s.kind === 'full') out.push(`<div class="sheet spread">${await renderPanel(s.pages[0], ctx, true)}<div class="rings"></div>${foot}</div>`);
+    else if (s.kind === 'full') {
+      // صفحة البسملة بلا حلقات في المنتصف حتى لا تقطع النص
+      const rings = s.pages[0].type === 'opening' ? '' : '<div class="rings"></div>';
+      out.push(`<div class="sheet spread">${await renderPanel(s.pages[0], ctx, true)}${rings}${foot}</div>`);
+    }
     else out.push(`<div class="sheet spread">${await renderPanel(s.pages[0], ctx, false)}${await renderPanel(s.pages[1], ctx, false)}<div class="rings"></div>${foot}</div>`);
   }
 
@@ -352,16 +357,11 @@ a.pill::after{content:' ⟵';color:${t.accent2}}
 .tpill.alt{background:${t.accent2}}
 .tpill b{background:rgba(255,255,255,.9);color:${t.ink};border-radius:3mm;min-width:7mm;text-align:center;font-size:.9em}
 
-.opgrid{height:100%;align-items:center;align-content:center}
-.opening.full .opgrid{grid-template-columns:1fr 1fr}
-.sheet.one .opgrid{grid-template-columns:1fr;row-gap:20mm}
-.op-title{display:flex;justify-content:center}
-.op-card{background:#fbeee0;background:color-mix(in srgb,${t.sand} 70%,#fff);padding:10mm 12mm;border-radius:50%/40%;text-align:center;box-shadow:0 1mm 3mm rgba(0,0,0,.12)}
-.op-h{font-size:10mm;font-weight:800;color:${t.accent2}}
-.op-n{font-size:8mm;font-weight:700;color:${t.accent}}
+.opgrid{height:100%;display:flex;align-items:center;justify-content:center}
 .op-basmala{text-align:center;font-family:'Amiri',serif;color:${t.accent}}
-.bsm{font-size:10mm;font-weight:700}
-.aya{font-size:12mm;margin-top:6mm;color:${t.ink};opacity:.75}
+.bsm{font-size:16mm;font-weight:700;line-height:1.6}
+.aya{font-size:12mm;margin-top:8mm;color:${t.ink};opacity:.7}
+.sheet.one .bsm{font-size:13mm}
 
 .sheet.cover{align-items:center;justify-content:center;background:${t.frame}}
 .cv-bg{position:absolute;inset:0;width:100%;height:100%}

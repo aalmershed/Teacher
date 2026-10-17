@@ -37,6 +37,10 @@ let docTarget = null;
     return;
   }
   document.title = project.title + ' — إنجاز';
+  // الملفات القديمة: صفحة البسملة كان فيها عنوان الملف والاسم، صارت للآية فقط
+  project.data.pages.filter((p) => p.type === 'opening').forEach((p) => p.blocks.forEach((b) => {
+    if (b.type === 'fields') b.items = b.items.filter((i) => i.label === 'الآية');
+  }));
   $('projTitle').value = project.title;
   $('projTitle').oninput = (e) => { project.title = e.target.value; markDirty(); };
   $('projTitle').disabled = readOnly;
@@ -210,7 +214,7 @@ function renderPage() {
     html += '<div class="note">هذه الصفحة نصية، لذلك تُعرض في صفحة واحدة من الدفتر حتى لا ينقسم النص، وتأتي الصفحة التالية مقابلها. خيار «صفحتين متقابلتين» مخصص للصفحات التي فيها صور أو جداول.</div>';
   }
   if (p.type === 'cover') html += '<div class="note">بيانات الغلاف الأمامي للملف. اترك أي حقل فارغًا لإخفائه.</div>';
-  if (p.type === 'opening') html += '<div class="note">صفحة البسملة والعنوان. تظهر البسملة تلقائيًا، ويمكنك تعديل الآية والعنوان والاسم.</div>';
+  if (p.type === 'opening') html += '<div class="note">صفحة البسملة. تظهر البسملة تلقائيًا، ويمكنك تعديل الآية تحتها أو تركها فارغة لإخفائها.</div>';
   if (p.type === 'toc') html += '<div class="note">📑 يُنشأ الفهرس تلقائيًا من عناوين الصفحات مع أرقامها. لإخفاء صفحة من الفهرس ألغِ خيار «تظهر في الفهرس» داخل الصفحة.</div>';
   if (p.type === 'backcover') html += '<div class="note">الغلاف الخلفي للملف — لا يحتاج إلى تعديل.</div>';
 
