@@ -118,7 +118,7 @@ function renderSide() {
     <div class="pitem ${i === cur ? 'on' : ''}" data-i="${i}">
       <span class="n">${PAGE_ICONS[p.type] || i + 1}</span>
       <span class="t">${esc(p.title || 'بدون عنوان')}</span>
-      ${p.type === 'section' ? `<span class="w">${p.width === 'full' ? 'كاملة' : 'نصف'}</span>` : ''}
+      ${p.type === 'section' && p.width === 'full' ? '<span class="w">صفحتين</span>' : ''}
       ${readOnly ? '' : `<span class="mv"><button data-mv="-1" title="لأعلى">▲</button><button data-mv="1" title="لأسفل">▼</button></span>`}
     </div>`).join('');
 }
@@ -197,7 +197,7 @@ function renderPage() {
     <input class="ptitle" data-page="title" value="${esc(p.title)}" ${dis} aria-label="عنوان الصفحة">
     <div class="popts">`;
   if (isSection) {
-    html += `<span class="seg"><button data-act="width" data-v="half" class="${p.width !== 'full' ? 'on' : ''}" ${dis}>نصف صفحة</button><button data-act="width" data-v="full" class="${p.width === 'full' ? 'on' : ''}" ${dis}>صفحة كاملة</button></span>
+    html += `<span class="seg"><button data-act="width" data-v="half" class="${p.width !== 'full' ? 'on' : ''}" ${dis}>صفحة واحدة</button><button data-act="width" data-v="full" class="${p.width === 'full' ? 'on' : ''}" ${dis}>صفحتين متقابلتين</button></span>
       <label><input type="checkbox" data-page="hideInToc" ${p.hideInToc ? '' : 'checked'} ${dis}> تظهر في الفهرس</label>
       <div class="spacer"></div>
       ${readOnly ? '' : '<button class="btn sm" data-act="dupPage">⧉ تكرار الصفحة</button><button class="btn sm danger" data-act="delPage">🗑 حذف الصفحة</button>'}`;
@@ -206,6 +206,9 @@ function renderPage() {
   }
   html += '</div></div>';
 
+  if (isSection && p.width === 'full' && p.blocks.length && p.blocks.every((b) => ['text', 'quote', 'fields'].includes(b.type))) {
+    html += '<div class="note">هذه الصفحة نصية، لذلك تُعرض في صفحة واحدة من الدفتر حتى لا ينقسم النص، وتأتي الصفحة التالية مقابلها. خيار «صفحتين متقابلتين» مخصص للصفحات التي فيها صور أو جداول.</div>';
+  }
   if (p.type === 'cover') html += '<div class="note">بيانات الغلاف الأمامي للملف. اترك أي حقل فارغًا لإخفائه.</div>';
   if (p.type === 'opening') html += '<div class="note">صفحة البسملة والعنوان. تظهر البسملة تلقائيًا، ويمكنك تعديل الآية والعنوان والاسم.</div>';
   if (p.type === 'toc') html += '<div class="note">📑 يُنشأ الفهرس تلقائيًا من عناوين الصفحات مع أرقامها. لإخفاء صفحة من الفهرس ألغِ خيار «تظهر في الفهرس» داخل الصفحة.</div>';

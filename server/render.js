@@ -68,8 +68,7 @@ async function renderBlock(b, ctx, wide) {
   const head = b.heading ? `<div class="bh">${esc(b.heading)}</div>` : '';
   switch (b.type) {
     case 'text': {
-      const cls = wide ? 'rich cols2' : 'rich';
-      return `<div class="blk">${head}<div class="${cls}">${cleanRich(b.html)}</div></div>`;
+      return `<div class="blk">${head}<div class="rich">${cleanRich(b.html)}</div></div>`;
     }
     case 'fields':
       return `<div class="blk">${head}<div class="fields">${(b.items || []).map((i) =>
@@ -93,7 +92,7 @@ async function renderBlock(b, ctx, wide) {
         const g = (arr, off) => `<div class="imgs n${Math.min(arr.length, 4)}">${arr.map((it, k) => one(it, k + off)).join('')}</div>`;
         return `<div class="blk wide2">${head ? `<div class="span2">${head}</div>` : ''}${g(items.slice(0, half), 0)}${g(items.slice(half), half)}</div>`;
       }
-      return `<div class="blk">${head}<div class="imgs n${Math.min(items.length, 4)}">${items.map(one).join('')}</div></div>`;
+      return `<div class="blk">${head}<div class="imgs n${Math.min(items.length, 4)}${items.length > 4 ? ' many' : ''}">${items.map(one).join('')}</div></div>`;
     }
     case 'links': {
       const rows = await Promise.all((b.items || []).map(async (it) => {
@@ -112,12 +111,12 @@ async function renderBlock(b, ctx, wide) {
   }
 }
 
-const isWide = (b, page) => (b.type === 'text' && page.blocks.length === 1) || (b.type === 'images' && (b.items || []).length > 1);
+const isWide = (b) => b.type === 'images' && (b.items || []).length > 1;
 
 async function renderSectionBody(page, ctx, full) {
   const parts = [];
   for (const b of page.blocks) {
-    const wide = full && isWide(b, page);
+    const wide = full && isWide(b);
     const html = await renderBlock(b, ctx, wide);
     if (html) parts.push(wide ? html.replace('class="blk', 'class="blk span2') : html);
   }
@@ -178,6 +177,11 @@ function coverPattern(t, W, H) {
 }
 
 // ---------- تجميع الصفحات في أوراق ----------
+// الصفحة النصية لا تمتد على صفحتي الدفتر أبدًا حتى لا ينقسم النص بينهما؛
+// الامتداد فقط للصفحات التي فيها صور أو جداول أو أكثر من نوع محتوى
+const TEXTUAL = new Set(['text', 'quote', 'fields']);
+const spansSpread = (p) => p.width === 'full' && !(p.blocks.length && p.blocks.every((b) => TEXTUAL.has(b.type)));
+
 function buildSheets(pages, layout) {
   const sheets = [];
   if (layout === 'single') {
@@ -188,7 +192,7 @@ function buildSheets(pages, layout) {
   const flush = () => { if (pending) { sheets.push({ kind: 'pair', pages: [pending, null] }); pending = null; } };
   for (const p of pages) {
     if (p.type === 'cover' || p.type === 'backcover') { flush(); sheets.push({ kind: p.type, pages: [p] }); continue; }
-    if (p.width === 'full') { flush(); sheets.push({ kind: 'full', pages: [p] }); continue; }
+    if (spansSpread(p)) { flush(); sheets.push({ kind: 'full', pages: [p] }); continue; }
     if (pending) { sheets.push({ kind: 'pair', pages: [pending, p] }); pending = null; } else pending = p;
   }
   flush();
@@ -295,8 +299,6 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .rich h3{font-size:4.2mm;color:${t.accent};margin:0 0 1.5mm}
 .rich h4{font-size:3.8mm;color:${t.accent2};margin:0 0 1.2mm}
 .rich mark{background:${t.sand};padding:0 1mm}
-.cols2{column-count:2;column-gap:22mm;height:100%}
-.panel.full .cols2{text-align:justify}
 
 .fields{background:${t.sand};border-radius:45% 55% 50% 45% / 12% 14% 12% 14%;padding:5mm 7mm;box-shadow:inset 0 0 0 .5mm rgba(255,255,255,.6)}
 .fr{display:flex;gap:2mm;padding:1.2mm 0;border-bottom:.3mm dashed rgba(0,0,0,.18)}
@@ -311,7 +313,7 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 
 .imgs{display:grid;gap:4mm;grid-template-columns:repeat(2,1fr)}
 .imgs.n1{grid-template-columns:1fr}
-.imgs.n3{grid-template-columns:repeat(3,1fr)}
+.imgs.n3,.imgs.many{grid-template-columns:repeat(3,1fr)}
 .wide2 .imgs.n3{grid-template-columns:repeat(2,1fr)}
 .wide2 .imgs.n3 .img:last-child{grid-column:1 / -1;width:50%;margin:0 auto}
 .img{margin:0;text-align:center}
@@ -374,4 +376,4 @@ a.pill::after{content:' ⟵';color:${t.accent2}}
 `;
 }
 
-module.exports = { renderProject, THEMES, cleanRich };
+module.exports = { renderProject, THEMES, cleanRich, spansSpread };
