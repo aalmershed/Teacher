@@ -39,6 +39,10 @@ let sel = 'yearly';
     ? `${subBadge(s)}<div class="muted" style="margin-top:6px">يمكنك التجديد الآن وستُضاف المدة إلى اشتراكك الحالي.</div>`
     : `${subBadge(s)}<div class="muted" style="margin-top:6px">اختر الخطة المناسبة لتفعيل حسابك.</div>`;
   if (s.provider === 'mock') document.getElementById('mockNote').textContent = 'ملاحظة: بوابة الدفع في الوضع التجريبي حاليًا — سيتم تفعيل الاشتراك مباشرة بدون دفع فعلي.';
+  if (s.provider === 'manual') {
+    document.getElementById('mockNote').textContent = 'التفعيل حاليًا يتم يدويًا: تواصل معنا لإتمام الدفع، وسيُفعّل اشتراكك مباشرة على نفس الحساب.';
+    document.getElementById('payBtn').textContent = 'طلب التفعيل';
+  }
 
   const { plans, currency } = await api('GET', '/api/plans');
   const box = document.getElementById('plans');

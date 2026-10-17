@@ -1,5 +1,5 @@
 // إدارة الاشتراكات والدفع.
-// حاليًا يعمل مزوّد "تجريبي" (mock) يفعّل الاشتراك مباشرة.
+// المزوّدات: mock (تجريبي يفعّل مباشرة — للتطوير فقط) | manual (المدير يفعّل من لوحة الإدارة).
 // لاحقًا: نضيف مزوّد Moyasar / Tap / Stripe بنفس الواجهة (createCheckout + handleCallback).
 const { db } = require('./db');
 
@@ -39,6 +39,8 @@ function activate(userId, planId, provider, ref) {
 function createCheckout(userId, planId) {
   const plan = PLANS[planId];
   if (!plan) throw new Error('خطة غير معروفة');
+  // التفعيل اليدوي: المدير يفعّل الاشتراك من لوحة الإدارة بعد استلام المبلغ
+  if (PROVIDER === 'manual') throw new Error('التفعيل حاليًا يتم يدويًا. تواصل معنا لإتمام الدفع وسيُفعّل اشتراكك مباشرة.');
   const info = db.prepare('INSERT INTO payments (user_id, plan, amount, status, provider) VALUES (?, ?, ?, ?, ?)')
     .run(userId, planId, plan.price * 100, 'pending', PROVIDER);
   const paymentId = Number(info.lastInsertRowid);
