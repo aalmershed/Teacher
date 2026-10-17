@@ -309,8 +309,9 @@ app.get('/f/:id', (req, res) => {
   res.sendFile(file);
 });
 
-app.get('/api/qr', requireAuth, async (req, res) => {
-  const u = str(req.query.u, 2000);
+// متاح بدون تسجيل دخول لتجربة رمز QR في الصفحة الرئيسية (نص قصير فقط)
+app.get('/api/qr', async (req, res) => {
+  const u = str(req.query.u, req.user ? 2000 : 300);
   if (!u) return res.status(400).end();
   res.type('image/svg+xml').send(await QRCode.toString(u, { type: 'svg', margin: 1 }));
 });

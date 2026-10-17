@@ -23,7 +23,7 @@ const common = [
   ['"/app"', '"app.html"'], ["'/app'", "'app.html'"],
   ['"/subscribe"', '"subscribe.html"'], ["'/subscribe'", "'subscribe.html'"],
   ['href="/admin"', 'href="#"'],
-  ['/assets/', 'assets/'], ['"/icon.svg"', '"icon.svg"'],
+  ['/assets/', 'assets/'], ['"/icon.svg"', '"icon.svg"'], ['url(/fonts/', 'url(fonts/'],
   ['<link rel="manifest" href="/manifest.webmanifest">', ''],
   ["if ('serviceWorker' in navigator)", 'if (false)'],
 ];

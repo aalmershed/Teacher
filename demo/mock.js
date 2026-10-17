@@ -131,6 +131,9 @@
     try {
       if (method === 'POST' && path === '/api/uploads') return json(200, await handleUpload(opts.body));
       if (method === 'POST' && path === '/api/files') return json(200, await handleFile(opts.body));
+      if (method === 'GET' && path === '/api/qr') {
+        return new Response(await Core.QRCode.toString(url.searchParams.get('u') || ' ', { type: 'svg', margin: 1 }), { headers: { 'Content-Type': 'image/svg+xml' } });
+      }
       for (const [m, re, fn] of routes) {
         const match = m === method && path.match(re);
         if (match) return json(200, fn(opts.body ? JSON.parse(opts.body) : {}, match[1] ? Number(match[1]) : undefined));
