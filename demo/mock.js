@@ -45,8 +45,7 @@
     ['GET', /^\/api\/me$/, () => ({ user: pub(auth()) })],
     ['PUT', /^\/api\/me$/, (b) => {
       const u = auth();
-      if (String(b.name || '').trim().length < 2) throw new HttpError(400, 'الاسم مطلوب');
-      u.name = b.name.trim(); u.phone = b.phone || '';
+      u.phone = b.phone || '';
       if (b.newPassword) {
         if (b.currentPassword !== u.password) throw new HttpError(400, 'كلمة المرور الحالية غير صحيحة');
         u.password = b.newPassword;
@@ -77,12 +76,12 @@
       store.set('projects', [...projects(), p]);
       return { id: p.id };
     }],
-    ['GET', /^\/api\/projects\/(\d+)$/, (b, id) => { const p = own(auth(), id); return { project: { id: p.id, title: p.title, data: p.data, updated_at: p.updated_at } }; }],
+    ['GET', /^\/api\/projects\/(\d+)$/, (b, id) => { const u = auth(); const p = own(u, id); return { project: { id: p.id, title: p.title, data: Core.applyAccountName(p.data, u.name), updated_at: p.updated_at } }; }],
     ['PUT', /^\/api\/projects\/(\d+)$/, (b, id) => {
       const u = auth(); active(u);
       const p = own(u, id);
       b.data.pages.forEach((pg) => pg.blocks.forEach((bl) => { if (bl.type === 'text') bl.html = Core.cleanRich(bl.html); }));
-      Object.assign(p, { title: String(b.title || '').trim() || p.title, data: b.data, updated_at: now() });
+      Object.assign(p, { title: String(b.title || '').trim() || p.title, data: Core.applyAccountName(b.data, u.name), updated_at: now() });
       store.set('projects', projects().map((x) => (x.id === p.id ? p : x)));
       return { ok: true, updated_at: p.updated_at };
     }],
@@ -172,7 +171,12 @@
     if (m) { store.set('current', Number(m[0])); return Number(m[0]); }
     return store.get('current', 0);
   };
-  window.demoGetProject = (id) => projects().find((p) => p.id === id) || null;
+  window.demoGetProject = (id) => {
+    const p = projects().find((x) => x.id === id);
+    const u = me();
+    if (p && u) Core.applyAccountName(p.data, u.name);
+    return p || null;
+  };
   window.downloadPdf = (id) => {
     store.set('current', id);
     toast('في النسخة التجريبية تفتح المعاينة بدل تنزيل PDF. التنزيل يعمل في النسخة الكاملة.');

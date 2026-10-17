@@ -81,7 +81,8 @@ main{padding:28px 0 60px}
 <div class="modal-bg" id="accModal">
   <div class="modal">
     <h3>إعدادات الحساب</h3>
-    <div class="field"><label for="accName">الاسم</label><input class="input" id="accName"></div>
+    <div class="field"><label for="accName">الاسم</label><input class="input" id="accName" disabled>
+      <small class="muted">الاسم ثابت كما سُجّل في العضوية ويظهر تلقائيًا في ملفاتك. لتصحيحه تواصل مع الدعم.</small></div>
     <div class="field"><label for="accPhone">الجوال</label><input class="input" id="accPhone" dir="ltr"></div>
     <details><summary style="cursor:pointer;font-weight:700;margin-bottom:10px">تغيير كلمة المرور</summary>
       <div class="field"><label for="accCur">كلمة المرور الحالية</label><input class="input" id="accCur" type="password" dir="ltr"></div>
@@ -193,7 +194,7 @@ function openAccount() {
 async function saveAccount() {
   const v = (id) => document.getElementById(id).value;
   try {
-    const r = await api('PUT', '/api/me', { name: v('accName'), phone: v('accPhone'), currentPassword: v('accCur'), newPassword: v('accNew') });
+    const r = await api('PUT', '/api/me', { phone: v('accPhone'), currentPassword: v('accCur'), newPassword: v('accNew') });
     user = r.user;
     document.getElementById('userName').textContent = user.name;
     closeModal('accModal');

@@ -8,7 +8,7 @@ const multer = require('multer');
 const QRCode = require('qrcode');
 
 const { db, DATA_DIR } = require('./db');
-const { createProjectData, newId } = require('./template');
+const { createProjectData, applyAccountName, newId } = require('./template');
 const { renderProject, THEMES, cleanRich } = require('./render');
 const { projectToPdf } = require('./pdf');
 const payments = require('./payments');
@@ -94,10 +94,9 @@ app.post('/api/auth/logout', (req, res) => {
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: publicUser(req.user) }));
 
 app.put('/api/me', requireAuth, (req, res) => {
-  const name = String(req.body.name || '').trim();
+  // الاسم ثابت كما سُجّل في العضوية (يظهر في كل ملفات الإنجاز) — تعديله من لوحة الإدارة فقط
   const phone = String(req.body.phone || '').trim();
-  if (name.length < 2) return res.status(400).json({ error: 'الاسم مطلوب' });
-  db.prepare('UPDATE users SET name = ?, phone = ? WHERE id = ?').run(name, phone || null, req.user.id);
+  db.prepare('UPDATE users SET phone = ? WHERE id = ?').run(phone || null, req.user.id);
   if (req.body.newPassword) {
     const u = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id);
     if (!bcrypt.compareSync(String(req.body.currentPassword || ''), u.password_hash)) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
@@ -164,7 +163,7 @@ function cleanData(data) {
 function loadProject(req, res) {
   const row = db.prepare('SELECT * FROM projects WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
   if (!row) { res.status(404).json({ error: 'الملف غير موجود' }); return null; }
-  return { ...row, data: JSON.parse(row.data) };
+  return { ...row, data: applyAccountName(JSON.parse(row.data), req.user.name) };
 }
 
 app.get('/api/projects', requireAuth, (req, res) => {
@@ -189,7 +188,7 @@ app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
   try {
-    const data = cleanData(req.body.data);
+    const data = applyAccountName(cleanData(req.body.data), req.user.name);
     const title = str(req.body.title, 200).trim() || p.title;
     db.prepare("UPDATE projects SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?").run(title, JSON.stringify(data), p.id);
     res.json({ ok: true, updated_at: db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(p.id).updated_at });
@@ -315,6 +314,13 @@ app.get('/api/admin/users', requireAdmin, (_req, res) => {
     .map((u) => ({ ...u, subscription: payments.subscriptionInfo(u.id) }));
   const paid = db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE status = 'paid'").get().total;
   res.json({ users, stats: { users: users.length, active: users.filter((u) => u.subscription.active).length, revenue: paid / 100 } });
+});
+
+app.put('/api/admin/users/:id/name', requireAdmin, (req, res) => {
+  const name = String(req.body.name || '').trim();
+  if (name.length < 2) return res.status(400).json({ error: 'الاسم مطلوب' });
+  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, Number(req.params.id));
+  res.json({ ok: true });
 });
 
 app.post('/api/admin/users/:id/grant', requireAdmin, (req, res) => {

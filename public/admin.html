@@ -37,11 +37,16 @@ async function load() {
     document.getElementById('rows').innerHTML = users.map((u) => `<tr>
       <td>${u.id}</td><td>${esc(u.name)}</td><td dir="ltr" style="text-align:right">${esc(u.email)}</td><td dir="ltr" style="text-align:right">${esc(u.phone || '')}</td>
       <td>${fmtDate(u.created_at)}</td><td>${u.projects}</td><td>${subBadge(u.subscription)}</td>
-      <td><button class="btn sm" onclick="grant(${u.id},'monthly')">+ شهر</button> <button class="btn sm" onclick="grant(${u.id},'yearly')">+ سنة</button></td></tr>`).join('');
+      <td><button class="btn sm" onclick="rename(${u.id})">تعديل الاسم</button> <button class="btn sm" onclick="grant(${u.id},'monthly')">+ شهر</button> <button class="btn sm" onclick="grant(${u.id},'yearly')">+ سنة</button></td></tr>`).join('');
   } catch (e) {
     if (e.status === 401) location.href = '/login?next=/admin';
     else document.querySelector('main').innerHTML = `<div class="empty-state"><p>${esc(e.message)}</p></div>`;
   }
+}
+async function rename(id) {
+  const name = prompt('الاسم الجديد كما يظهر في ملفات الإنجاز:');
+  if (!name) return;
+  try { await api('PUT', `/api/admin/users/${id}/name`, { name }); toast('تم تعديل الاسم', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }
 }
 async function grant(id, plan) {
   try { await api('POST', `/api/admin/users/${id}/grant`, { plan }); toast('تم تفعيل الاشتراك', 'ok'); load(); } catch (e) { toast(e.message, 'err'); }

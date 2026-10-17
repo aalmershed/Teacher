@@ -158,18 +158,23 @@ function withIds(pages) {
   return pages.map((p) => ({ ...p, id: newId(), blocks: p.blocks.map((b) => ({ ...b, id: newId() })) }));
 }
 
-function createProjectData(name = '') {
-  const data = JSON.parse(JSON.stringify(TEMPLATE));
-  data.pages = withIds(data.pages);
-  if (name) {
-    for (const p of data.pages) {
-      if (p.type !== 'cover' && p.type !== 'opening' && p.title !== 'السيرة الذاتية') continue;
-      const f = p.blocks.find((b) => b.type === 'fields');
-      const item = f && f.items.find((i) => i.label === 'الاسم');
-      if (item) item.value = name;
+// حقل "الاسم" في أي صفحة يأخذ دائمًا اسم صاحب الحساب ولا يمكن تعديله من المحرر
+const NAME_LABEL = 'الاسم';
+
+function applyAccountName(data, name) {
+  for (const p of data.pages || []) {
+    for (const b of p.blocks || []) {
+      if (b.type !== 'fields') continue;
+      for (const item of b.items || []) if (String(item.label).trim() === NAME_LABEL) item.value = name;
     }
   }
   return data;
 }
 
-module.exports = { createProjectData, newId };
+function createProjectData(name = '') {
+  const data = JSON.parse(JSON.stringify(TEMPLATE));
+  data.pages = withIds(data.pages);
+  return applyAccountName(data, name);
+}
+
+module.exports = { createProjectData, applyAccountName, NAME_LABEL, newId };

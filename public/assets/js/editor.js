@@ -258,9 +258,9 @@ function blockBody(b, bi, locked, dis) {
         <div class="rte" ${at('html')} contenteditable="${!readOnly}">${b.html || ''}</div>`;
     case 'fields':
       return b.items.map((it, i) => locked
-        ? `<div class="frow locked"><span class="lbl">${esc(it.label)}</span>${FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<input class="input" ${at(`items.${i}.value`)} value="${esc(it.value)}" ${dis}>`}</div>`
-        : `<div class="frow"><input class="input lab" ${at(`items.${i}.label`)} value="${esc(it.label)}" placeholder="البند" ${dis}>
-           ${FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<textarea class="input" rows="1" ${at(`items.${i}.value`)} placeholder="القيمة" ${dis}>${esc(it.value)}</textarea>`}
+        ? `<div class="frow locked"><span class="lbl">${esc(it.label)}</span>${isNameField(it) ? nameField(it) : FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<input class="input" ${at(`items.${i}.value`)} value="${esc(it.value)}" ${dis}>`}</div>`
+        : `<div class="frow"><input class="input lab" ${at(`items.${i}.label`)} value="${esc(it.label)}" placeholder="البند" ${isNameField(it) ? 'readonly' : ''} ${dis}>
+           ${isNameField(it) ? nameField(it) : FIELD_OPTIONS[it.label] ? optionsSelect(it, at(`items.${i}.value`), dis) : `<textarea class="input" rows="1" ${at(`items.${i}.value`)} placeholder="القيمة" ${dis}>${esc(it.value)}</textarea>`}
            ${readOnly ? '' : `<button class="btn icon ghost danger sm" data-act="rmItem" data-b="${bi}" data-i="${i}" title="حذف">✕</button>`}</div>`).join('')
         + (locked || readOnly ? '' : `<button class="btn sm" data-act="addItem" data-b="${bi}">＋ إضافة بند</button>`);
     case 'table': {
@@ -309,6 +309,10 @@ function linkSource(it, bi, i, at, dis) {
   return `<input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://... أو ارفع ملف" dir="ltr" ${dis}>
     ${readOnly ? '' : `<button class="btn sm accent" data-act="attach" data-b="${bi}" data-i="${i}" title="رفع ملف">📎 رفع ملف</button>`}`;
 }
+
+// حقل الاسم يُعبّأ تلقائيًا من اسم العضوية ولا يُعدّل
+const isNameField = (it) => String(it.label).trim() === 'الاسم';
+const nameField = (it) => `<div class="locked-val" title="الاسم مأخوذ من بيانات العضوية ولا يمكن تعديله">🔒 <span>${esc(it.value)}</span><small>من بيانات العضوية</small></div>`;
 
 // حقول لها قائمة اختيارات ثابتة بدل الكتابة الحرة
 const FIELD_OPTIONS = {
