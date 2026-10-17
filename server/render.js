@@ -267,7 +267,7 @@ function css(t, layout) {
 @page{size:${W}mm ${H}mm;margin:0}
 *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 html,body{margin:0;padding:0}
-body{font-family:'Tajawal',sans-serif;color:${t.ink};font-size:3.6mm;line-height:1.65;text-align:right;direction:rtl}
+body{font-family:'Tajawal',sans-serif;color:${t.ink};font-size:4.2mm;line-height:1.65;text-align:right;direction:rtl}
 body.screen{background:#8a8f94;padding:8mm 0}
 body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .sheet{width:${W}mm;height:${H}mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;
