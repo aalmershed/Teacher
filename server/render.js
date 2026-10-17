@@ -84,7 +84,8 @@ async function renderBlock(b, ctx, wide) {
       const tints = ['t1', 't2', 't3'];
       const one = (it, k) => {
         const src = it.uploadId ? ctx.imageUrl(it.uploadId) : '';
-        const inner = src ? `<img src="${esc(src)}" alt="">` : '';
+        // الضغط على الصورة يفتحها كاملة (في المعاينة وفي ملف PDF)
+        const inner = src ? `<a href="${esc(ctx.imageLink(it.uploadId))}" target="_blank" rel="noopener"><img src="${esc(src)}" alt=""></a>` : '';
         return `<figure class="img ${shapes[k % 6]} ${src ? 'has' : tints[k % 3]}">${inner ? `<div class="ib">${inner}</div>` : '<div class="ib"></div>'}${it.caption ? `<figcaption>${esc(it.caption)}</figcaption>` : ''}</figure>`;
       };
       if (wide && items.length > 1) {
@@ -218,6 +219,7 @@ async function renderProject(project, opts = {}) {
   const ctx = {
     theme, tocEntries,
     imageUrl: opts.imageUrl || ((id) => `/api/uploads/${id}`),
+    imageLink: opts.imageLink || ((id) => `${baseUrl}/i/${id}`),
     fileUrl: (id) => `${baseUrl}/f/${id}`,
   };
 
@@ -328,9 +330,9 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .imgs.n1 .img .ib{aspect-ratio:1.6;border-radius:4mm!important}
 .img img{width:100%;height:100%;object-fit:cover;display:block}
 /* الصورة المرفوعة تظهر كاملة بدون قص؛ الأشكال الزخرفية للخانات الفارغة فقط */
-.img.has .ib{border-radius:3mm!important;background:#fff;box-shadow:0 .8mm 2mm rgba(0,0,0,.1)}
-.img.has img{object-fit:contain}
-.imgs.n1 .img.has .ib{aspect-ratio:auto;background:transparent;box-shadow:none;overflow:visible}
+/* صور المعرض تأخذ شكل الرسومات (قص زخرفي) والضغط يفتحها كاملة؛ الصورة المفردة تظهر كاملة */
+.img .ib a{display:block;width:100%;height:100%}
+.imgs.n1 .img.has .ib{aspect-ratio:auto;background:transparent;box-shadow:none;overflow:visible;border-radius:0!important}
 .imgs.n1 .img.has img{width:auto;height:auto;max-width:100%;max-height:calc(var(--fit,1) * 125mm);margin:0 auto;border-radius:3mm;box-shadow:0 .8mm 2mm rgba(0,0,0,.1)}
 .img.t1 .ib{background:${t.panel};background:color-mix(in srgb,${t.frame} 55%,#fff)}
 .img.t2 .ib{background:color-mix(in srgb,${t.sand} 85%,#fff)}

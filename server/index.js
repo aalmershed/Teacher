@@ -247,6 +247,16 @@ app.post('/api/uploads', requireAuth, requireActive, upload.single('file'), (req
   res.json({ id: req.file.filename });
 });
 
+// رابط عام للصورة يفتحها كاملة عند الضغط عليها في الملف — المعرّف عشوائي فلا يمكن تخمينه
+app.get('/i/:id', (req, res) => {
+  if (!/^[a-f0-9]{24}$/.test(req.params.id)) return res.status(404).send('الصورة غير موجودة');
+  const row = db.prepare('SELECT * FROM uploads WHERE id = ?').get(req.params.id);
+  const file = row && path.join(DATA_DIR, 'uploads', row.id);
+  if (!row || !fs.existsSync(file)) return res.status(404).send('الصورة غير موجودة');
+  res.set({ 'Content-Type': row.mime, 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'", 'Cache-Control': 'public, max-age=86400' });
+  res.sendFile(file);
+});
+
 app.get('/api/uploads/:id', requireAuth, (req, res) => {
   const row = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
   const file = row && path.join(DATA_DIR, 'uploads', row.id);
