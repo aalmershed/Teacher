@@ -30,6 +30,22 @@ npx playwright install chromium
 CHROMIUM_PATH=/path/to/chrome npm start
 ```
 
+## النشر بضغطة زر (Render) — الأسهل
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/aalmershed/Teacher)
+
+1. اضغط الزر أعلاه، وسجّل في Render بحساب GitHub نفسه، واسمح له بالوصول لمستودع Teacher.
+2. يطلب منك Render ثلاث قيم:
+   - `ADMIN_EMAIL`: بريدك (تسجّل به في الموقع لتصبح مديرًا).
+   - `MOYASAR_PUBLISHABLE_KEY`: المفتاح العام من لوحة ميسر (`pk_live_...`).
+   - `MOYASAR_SECRET_KEY`: المفتاح السري من لوحة ميسر (`sk_live_...`).
+3. اضغط **Apply** وأدخل بطاقة الدفع لـ Render (خطة Starter مع قرص 5GB ≈ 8 دولار شهريًا).
+4. بعد 5–10 دقائق يعمل الموقع على رابط مثل `https://teacher-portfolio.onrender.com`. افتحه وسجّل ببريد المدير.
+
+**ربط دومين خاص لاحقًا:** في Render ← الخدمة ← Settings ← Custom Domains أضف الدومين واتبع التعليمات، ثم أضف متغير `PUBLIC_URL=https://دومينك`.
+
+**إشعارات ميسر (اختياري ومستحسن):** في Render ← Environment انسخ قيمة `MOYASAR_WEBHOOK_SECRET`، ثم في لوحة ميسر ← Webhooks أضف الرابط `https://رابط-موقعك/payments/moyasar/webhook` والصق القيمة في Secret Token واختر `payment_paid`.
+
 ## النشر على الإنترنت (خادم VPS + دومين)
 
 جُرّبت هذه الطريقة كاملة داخل حاوية Docker: التسجيل، إنشاء ملف، رفع شاهد، تصدير PDF، وبقاء البيانات بعد إعادة التشغيل.

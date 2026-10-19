@@ -1,0 +1,38 @@
+# نشر المنصة على Render بضغطة زر (انظر README: "النشر بضغطة زر")
+# Render يبني الموقع من Dockerfile، ويحفظ البيانات (الحسابات والملفات والشواهد) على قرص دائم.
+services:
+  - type: web
+    name: teacher-portfolio
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /
+    autoDeploy: true
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "1"
+      - key: PAYMENT_PROVIDER
+        value: moyasar
+      - key: PRICE_MONTHLY
+        value: "29"
+      - key: PRICE_YEARLY
+        value: "199"
+      - key: TRIAL_DAYS
+        value: "0"
+      # القيم التالية يطلبها Render منك أثناء النشر
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: MOYASAR_PUBLISHABLE_KEY
+        sync: false
+      - key: MOYASAR_SECRET_KEY
+        sync: false
+      # كلمة سر إشعارات ميسر — يولّدها Render تلقائيًا
+      - key: MOYASAR_WEBHOOK_SECRET
+        generateValue: true
