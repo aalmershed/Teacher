@@ -95,17 +95,39 @@ Disallow: /reset
 Sitemap: ${base}/sitemap.xml
 `;
 
-function sitemap(base) {
-  const day = new Date().toISOString().slice(0, 10);
-  const urls = [['/', '1.0', 'weekly'], ['/register', '0.8', 'monthly'], ['/login', '0.4', 'yearly']];
+// تاريخ آخر تعديل حقيقي للصفحة (من ملفاتها) — Google يتجاهل lastmod إذا كان يتغير كل يوم بلا تعديل فعلي
+function lastmod(publicDir, files) {
+  const t = Math.max(...files.map((f) => { try { return fs.statSync(path.join(publicDir, f)).mtimeMs; } catch { return 0; } }));
+  return new Date(t || Date.now()).toISOString().slice(0, 10);
+}
+
+// خريطة الموقع: الصفحات العامة المفيدة فقط (صفحة الدخول واستعادة كلمة المرور لا تفيد نتائج البحث)
+function sitemap(base, publicDir) {
+  const urls = [
+    { loc: '/', files: ['index.html', '../server/seo.js'], freq: 'weekly', pr: '1.0', image: { loc: '/og.png', title: SITE_NAME, caption: DESCRIPTION } },
+    { loc: '/register', files: ['auth.html'], freq: 'monthly', pr: '0.8' },
+  ];
+  const body = urls.map((u) => `  <url>
+    <loc>${esc(base + u.loc)}</loc>
+    <lastmod>${lastmod(publicDir, u.files)}</lastmod>
+    <changefreq>${u.freq}</changefreq>
+    <priority>${u.pr}</priority>${u.image ? `
+    <image:image>
+      <image:loc>${esc(base + u.image.loc)}</image:loc>
+      <image:title>${esc(u.image.title)}</image:title>
+      <image:caption>${esc(u.image.caption)}</image:caption>
+    </image:image>` : ''}
+  </url>`).join('\n');
   return `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(([u, pr, f]) => `  <url><loc>${base}${u}</loc><lastmod>${day}</lastmod><changefreq>${f}</changefreq><priority>${pr}</priority></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${body}
 </urlset>
 `;
 }
 
 // صفحات خاصة لا يجب أن تظهر في نتائج البحث (لوحات المستخدم وملفات الشواهد الخاصة بالمعلمين)
 const NOINDEX = /^\/(api|app|editor|admin|subscribe|f|i|b|reset)(\/|$)/;
+// صفحات عامة لكن بلا فائدة في نتائج البحث: لا تُفهرس، وتُتبع روابطها
+const LOW_VALUE = /^\/(login|forgot)\/?$/;
 
-module.exports = { renderHome, robots, sitemap, NOINDEX, FAQ };
+module.exports = { renderHome, robots, sitemap, NOINDEX, LOW_VALUE, FAQ };
