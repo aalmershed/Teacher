@@ -54,7 +54,7 @@ function subBadge(sub) {
   if (!sub) return '';
   if (sub.active && sub.status === 'trialing') return `<span class="badge warn">فترة تجريبية حتى ${fmtDate(sub.endsAt)}</span>`;
   if (sub.active) return `<span class="badge">مشترك حتى ${fmtDate(sub.endsAt)}</span>`;
-  return '<span class="badge bad">الاشتراك غير مفعل</span>';
+  return '<span class="badge warn">حساب مجاني</span>';
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -65,6 +65,26 @@ document.addEventListener('click', (e) => {
   if (c) c.closest('.modal-bg').classList.remove('open');
 });
 
+// نافذة تطلب الاشتراك عند محاولة تنزيل PDF بدون اشتراك
+function showSubscribePrompt() {
+  let m = document.getElementById('subPrompt');
+  if (!m) {
+    m = document.createElement('div');
+    m.id = 'subPrompt';
+    m.className = 'modal-bg';
+    m.innerHTML = `<div class="modal" style="text-align:center">
+      <div style="font-size:2.6em;line-height:1">📄</div>
+      <h3 style="margin-top:8px">ملفك جاهز للتنزيل</h3>
+      <p class="muted">تنزيل ملف الإنجاز بصيغة PDF متاح للمشتركين. اشترك الآن ونزّل ملفك مباشرة، وكل ما سويته محفوظ كما هو.</p>
+      <div class="modal-actions" style="justify-content:center">
+        <a class="btn primary" href="/subscribe">اشترك الآن</a>
+        <button class="btn" data-close>لاحقًا</button>
+      </div></div>`;
+    document.body.appendChild(m);
+  }
+  m.classList.add('open');
+}
+
 async function downloadPdf(projectId, btn) {
   const original = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جارٍ التجهيز...'; }
@@ -72,7 +92,9 @@ async function downloadPdf(projectId, btn) {
     const res = await fetch(`/api/projects/${projectId}/pdf`, { credentials: 'same-origin' });
     if (!res.ok) {
       let msg = 'تعذر إنشاء ملف PDF';
-      try { msg = (await res.json()).error || msg; } catch (_) {}
+      let code = '';
+      try { const d = await res.json(); msg = d.error || msg; code = d.code; } catch (_) {}
+      if (code === 'SUBSCRIPTION_REQUIRED') { showSubscribePrompt(); return; }
       throw new Error(msg);
     }
     const blob = await res.blob();

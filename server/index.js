@@ -48,9 +48,11 @@ app.use((req, _res, next) => {
 });
 
 const requireAuth = (req, res, next) => (req.user ? next() : res.status(401).json({ error: 'يجب تسجيل الدخول' }));
+// الاستخدام مجاني (إنشاء، تعديل، رفع، معاينة)؛ تنزيل ملف PDF النهائي فقط يحتاج اشتراكًا
+const isSubscribed = (user) => !!user.is_admin || payments.subscriptionInfo(user.id).active;
 const requireActive = (req, res, next) => {
-  if (payments.subscriptionInfo(req.user.id).active || req.user.is_admin) return next();
-  res.status(402).json({ error: 'اشتراكك غير مفعل. فعّل اشتراكك للمتابعة.', code: 'SUBSCRIPTION_REQUIRED' });
+  if (isSubscribed(req.user)) return next();
+  res.status(402).json({ error: 'تنزيل ملف PDF متاح للمشتركين. اشترك الآن لتنزيل ملفك.', code: 'SUBSCRIPTION_REQUIRED' });
 };
 const requireAdmin = (req, res, next) => (req.user && req.user.is_admin ? next() : res.status(403).json({ error: 'غير مصرح' }));
 
@@ -197,7 +199,7 @@ app.get('/api/projects', requireAuth, (req, res) => {
   res.json({ projects: rows });
 });
 
-app.post('/api/projects', requireAuth, requireActive, (req, res) => {
+app.post('/api/projects', requireAuth, (req, res) => {
   const title = str(req.body.title, 200).trim() || 'ملف إنجاز جديد';
   const data = createProjectData(req.user.name);
   if (THEMES[req.body.theme]) data.settings.theme = req.body.theme;
@@ -210,7 +212,7 @@ app.get('/api/projects/:id', requireAuth, (req, res) => {
   if (p) res.json({ project: { id: p.id, title: p.title, data: p.data, updated_at: p.updated_at, baseUrl: baseUrl(req) } });
 });
 
-app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
+app.put('/api/projects/:id', requireAuth, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
   try {
@@ -223,7 +225,7 @@ app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
   }
 });
 
-app.post('/api/projects/:id/duplicate', requireAuth, requireActive, (req, res) => {
+app.post('/api/projects/:id/duplicate', requireAuth, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
   // النسخة تأخذ رموز QR جديدة حتى لا يؤثر تعديلها على الملف الأصلي
@@ -245,7 +247,8 @@ app.get('/api/projects/:id/preview', requireAuth, async (req, res, next) => {
   try {
     const p = loadProject(req, res);
     if (!p) return;
-    res.type('html').send(await renderProject(p, { screen: true, baseUrl: baseUrl(req) }));
+    // غير المشترك يرى المعاينة بعلامة مائية ولا يستطيع طباعتها
+    res.type('html').send(await renderProject(p, { screen: true, baseUrl: baseUrl(req), watermark: !isSubscribed(req.user) }));
   } catch (e) { next(e); }
 });
 
@@ -270,7 +273,7 @@ const upload = multer({
   fileFilter: (_req, file, cb) => cb(null, /^image\/(png|jpe?g|webp|gif)$/.test(file.mimetype)),
 });
 
-app.post('/api/uploads', requireAuth, requireActive, upload.single('file'), (req, res) => {
+app.post('/api/uploads', requireAuth, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'الملف يجب أن يكون صورة (PNG, JPG, WEBP) بحجم أقل من 8MB' });
   db.prepare('INSERT INTO uploads (id, user_id, filename, mime, size) VALUES (?, ?, ?, ?, ?)')
     .run(req.file.filename, req.user.id, str(req.file.originalname, 200), req.file.mimetype, req.file.size);
@@ -305,7 +308,7 @@ const fileUpload = multer({
   fileFilter: (_req, file, cb) => cb(null, ALLOWED_FILE.test(file.mimetype)),
 });
 
-app.post('/api/files', requireAuth, requireActive, (req, res, next) => {
+app.post('/api/files', requireAuth, (req, res, next) => {
   fileUpload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? `حجم الملف أكبر من ${FILE_MAX_MB} ميجابايت` : 'تعذر رفع الملف' });
     if (!req.file) return res.status(400).json({ error: 'نوع الملف غير مدعوم. المسموح: PDF، Word، Excel، PowerPoint، الصور، MP4' });

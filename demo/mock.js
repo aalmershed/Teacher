@@ -30,7 +30,7 @@
       if (!/^\S+@\S+\.\S+$/.test(email)) throw new HttpError(400, 'البريد الإلكتروني غير صحيح');
       if (String(b.password || '').length < 8) throw new HttpError(400, 'كلمة المرور يجب ألا تقل عن 8 أحرف');
       if (users().some((u) => u.email === email)) throw new HttpError(409, 'البريد مسجل مسبقًا');
-      const u = { id: Date.now(), name: b.name.trim(), email, phone: b.phone || '', password: b.password, created_at: now(), sub: { status: 'trialing', plan: 'trial', end: Date.now() + 7 * DAY } };
+      const u = { id: Date.now(), name: b.name.trim(), email, phone: b.phone || '', password: b.password, created_at: now(), sub: { status: 'none', plan: null, end: 0 } };
       store.set('users', [...users(), u]);
       store.set('session', u.id);
       return { user: pub(u) };
@@ -53,7 +53,7 @@
       saveUser(u);
       return { user: pub(u) };
     }],
-    ['GET', /^\/api\/plans$/, () => ({ plans: Object.values(PLANS), trialDays: 7, currency: 'ر.س' })],
+    ['GET', /^\/api\/plans$/, () => ({ plans: Object.values(PLANS), trialDays: 0, currency: 'ر.س' })],
     ['POST', /^\/api\/subscribe$/, (b) => {
       const u = auth();
       const plan = PLANS[b.plan];
@@ -69,7 +69,7 @@
       return { projects: projects().filter((p) => p.userId === u.id).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)).map(({ id, title, created_at, updated_at }) => ({ id, title, created_at, updated_at })) };
     }],
     ['POST', /^\/api\/projects$/, (b) => {
-      const u = auth(); active(u);
+      const u = auth();
       const data = Core.createProjectData(u.name);
       if (Core.THEMES[b.theme]) data.settings.theme = b.theme;
       const p = { id: Date.now(), userId: u.id, title: String(b.title || '').trim() || 'ملف إنجاز جديد', data, created_at: now(), updated_at: now() };
@@ -78,7 +78,7 @@
     }],
     ['GET', /^\/api\/projects\/(\d+)$/, (b, id) => { const u = auth(); const p = own(u, id); return { project: { id: p.id, title: p.title, data: Core.applyAccountName(p.data, u.name), updated_at: p.updated_at } }; }],
     ['PUT', /^\/api\/projects\/(\d+)$/, (b, id) => {
-      const u = auth(); active(u);
+      const u = auth();
       const p = own(u, id);
       b.data.pages.forEach((pg) => pg.blocks.forEach((bl) => { if (bl.type === 'text') bl.html = Core.cleanRich(bl.html); }));
       Object.assign(p, { title: String(b.title || '').trim() || p.title, data: Core.applyAccountName(b.data, u.name), updated_at: now() });
@@ -86,7 +86,7 @@
       return { ok: true, updated_at: p.updated_at };
     }],
     ['POST', /^\/api\/projects\/(\d+)\/duplicate$/, (b, id) => {
-      const u = auth(); active(u);
+      const u = auth();
       const p = own(u, id);
       const copy = { ...JSON.parse(JSON.stringify(p)), id: Date.now(), title: p.title + ' (نسخة)', created_at: now(), updated_at: now() };
       store.set('projects', [...projects(), copy]);
@@ -100,7 +100,7 @@
   ];
 
   async function handleUpload(body) {
-    const u = auth(); active(u);
+    const u = auth();
     const file = body.get('file');
     if (!file || !/^image\//.test(file.type)) throw new HttpError(400, 'الملف يجب أن يكون صورة');
     const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
@@ -110,7 +110,7 @@
   }
 
   async function handleFile(body) {
-    const u = auth(); active(u);
+    const u = auth();
     const file = body.get('file');
     if (!file) throw new HttpError(400, 'لم يتم اختيار ملف');
     if (file.size > 3 * 1024 * 1024) throw new HttpError(400, 'في النسخة التجريبية الحد الأقصى 3 ميجابايت (في النسخة الكاملة 25)');
@@ -180,7 +180,9 @@
     if (p && u) Core.applyAccountName(p.data, u.name);
     return p || null;
   };
+  window.demoActive = () => { const u = me(); return !!u && subInfo(u).active; };
   window.downloadPdf = (id) => {
+    if (!demoActive()) { showSubscribePrompt(); return; }
     store.set('current', id);
     toast('في النسخة التجريبية تفتح المعاينة بدل تنزيل PDF. التنزيل يعمل في النسخة الكاملة.');
     setTimeout(() => { location.href = 'preview.html#p' + id; }, 900);

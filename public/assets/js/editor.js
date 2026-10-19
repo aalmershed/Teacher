@@ -28,8 +28,8 @@ let docTarget = null;
 (async function init() {
   const user = await currentUser();
   if (!user) return;
-  readOnly = !(user.subscription.active || user.isAdmin);
-  $('roBanner').style.display = readOnly ? 'block' : 'none';
+  // التعديل متاح للجميع؛ الشريط يذكّر غير المشترك أن التنزيل يحتاج اشتراكًا
+  $('roBanner').style.display = user.subscription.active || user.isAdmin ? 'none' : 'block';
   try {
     project = (await api('GET', `/api/projects/${projectId}`)).project;
   } catch (e) {
@@ -94,8 +94,7 @@ async function save() {
   } catch (e) {
     dirty = true;
     setStatus('تعذر الحفظ — ' + e.message, true);
-    if (e.code === 'SUBSCRIPTION_REQUIRED') { readOnly = true; $('roBanner').style.display = 'block'; }
-    else { clearTimeout(saveTimer); saveTimer = setTimeout(save, 5000); }
+    clearTimeout(saveTimer); saveTimer = setTimeout(save, 5000);
     return false;
   } finally {
     saving = false;

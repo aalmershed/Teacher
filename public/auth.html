@@ -40,7 +40,9 @@ document.getElementById('submit').textContent = isReg ? 'إنشاء الحساب
 document.getElementById('password').autocomplete = isReg ? 'new-password' : 'current-password';
 document.title = (isReg ? 'حساب جديد' : 'تسجيل الدخول') + ' — إنجاز';
 if (isReg) api('GET', '/api/plans').then(({ trialDays }) => {
-  if (trialDays > 0) document.getElementById('trialNote').textContent = `تحصل على فترة تجريبية مجانية لمدة ${trialDays} أيام فور التسجيل.`;
+  document.getElementById('trialNote').textContent = trialDays > 0
+    ? `تحصل على فترة تجريبية مجانية لمدة ${trialDays} أيام فور التسجيل.`
+    : 'التسجيل مجاني: أنشئ ملفك وعدّله بدون دفع، واشترك فقط عند تنزيله PDF.';
 });
 
 const next = new URLSearchParams(location.search).get('next');

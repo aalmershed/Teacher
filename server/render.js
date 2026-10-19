@@ -244,8 +244,15 @@ async function renderProject(project, opts = {}) {
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(project.title)}</title><style>${fontCss(opts.embedFonts)}\n${css(theme, layout)}</style></head>
-<body class="${opts.screen ? 'screen' : ''}">${out.join('\n')}<script>${FIT_SCRIPT}</script></body></html>`;
+<body class="${opts.screen ? 'screen' : ''}">${opts.watermark ? WATERMARK : ''}${out.join('\n')}<script>${FIT_SCRIPT}</script></body></html>`;
 }
+
+// معاينة غير المشترك: علامة مائية على كل الصفحات ومنع الطباعة/الحفظ من المتصفح
+const WATERMARK = `<style>
+.sheet::after{content:'نسخة معاينة · اشترك لتنزيل الملف';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font:800 13mm 'Tajawal',sans-serif;color:rgba(0,0,0,.09);transform:rotate(-24deg);pointer-events:none;z-index:20;white-space:nowrap}
+@media print{body>*{display:none!important}body::before{content:'تنزيل الملف متاح للمشتركين — اشترك من حسابك في المنصة';display:block;padding:40mm 10mm;text-align:center;font:700 7mm 'Tajawal',sans-serif}}
+</style>`;
 
 // تصغير الخط تلقائيًا إذا تجاوز المحتوى مساحة الصفحة
 const FIT_SCRIPT = `

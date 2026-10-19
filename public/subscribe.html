@@ -37,7 +37,7 @@ let sel = 'yearly';
   const s = user.subscription;
   document.getElementById('status').innerHTML = s.active
     ? `${subBadge(s)}<div class="muted" style="margin-top:6px">يمكنك التجديد الآن وستُضاف المدة إلى اشتراكك الحالي.</div>`
-    : `${subBadge(s)}<div class="muted" style="margin-top:6px">اختر الخطة المناسبة لتفعيل حسابك.</div>`;
+    : `${subBadge(s)}<div class="muted" style="margin-top:6px">استخدام المنصة مجاني. اشترك لتنزيل ملفات الإنجاز بصيغة PDF.</div>`;
   if (s.provider === 'mock') document.getElementById('mockNote').textContent = 'ملاحظة: بوابة الدفع في الوضع التجريبي حاليًا — سيتم تفعيل الاشتراك مباشرة بدون دفع فعلي.';
   if (s.provider === 'manual') {
     document.getElementById('mockNote').textContent = 'التفعيل حاليًا يتم يدويًا: تواصل معنا لإتمام الدفع، وسيُفعّل اشتراكك مباشرة على نفس الحساب.';

@@ -52,8 +52,8 @@ main{padding:28px 0 60px}
 
 <main class="container">
   <div class="card banner" id="subBanner" style="display:none">
-    <p><b>اشتراكك غير مفعل.</b> يمكنك استعراض ملفاتك، لكن الإنشاء والتعديل والتصدير يتطلب اشتراكًا فعالًا.</p>
-    <a class="btn accent" href="/subscribe">فعّل اشتراكك</a>
+    <p><b>أنشئ ملفاتك وعدّلها مجانًا.</b> عند الانتهاء، اشترك لتنزيل ملف الإنجاز بصيغة PDF.</p>
+    <a class="btn accent" href="/subscribe">اشترك الآن</a>
   </div>
 
   <div class="head">
@@ -113,13 +113,6 @@ let user, selTheme = 'mint', delId = null, projectList = [];
 document.getElementById('userBtn').onclick = (e) => { e.stopPropagation(); document.getElementById('userMenu').classList.toggle('open'); };
 document.addEventListener('click', () => document.getElementById('userMenu').classList.remove('open'));
 
-function guardActive() {
-  if (user.subscription.active || user.isAdmin) return true;
-  toast('فعّل اشتراكك أولًا', 'err');
-  setTimeout(() => { location.href = '/subscribe'; }, 900);
-  return false;
-}
-
 async function load() {
   user = await currentUser();
   if (!user) return;
@@ -158,7 +151,6 @@ async function loadProjects() {
 }
 
 function openNew() {
-  if (!guardActive()) return;
   openModal('newModal');
   setTimeout(() => document.getElementById('newTitle').select(), 50);
 }
@@ -173,7 +165,6 @@ async function createProject() {
 }
 
 async function dup(id) {
-  if (!guardActive()) return;
   try { await api('POST', `/api/projects/${id}/duplicate`); toast('تم نسخ الملف', 'ok'); loadProjects(); } catch (e) { toast(e.message, 'err'); }
 }
 

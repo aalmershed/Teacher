@@ -271,7 +271,7 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
         <a class="btn xl" href="#try">جرّب المحرر</a>
       </div>
       <div class="trust">
-        <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span id="trialTrust">فترة تجريبية مجانية</span></span>
+        <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span id="trialTrust">التسجيل والاستخدام مجاني</span></span>
         <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>بدون برامج أو تحميل</span>
         <span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>يعمل على الجوال</span>
       </div>
@@ -367,10 +367,10 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
     <div class="sec-h reveal"><span class="eyebrow">كيف يعمل؟</span><h2>أربع خطوات وملفك جاهز</h2></div>
     <div class="steps" id="steps">
       <div class="steps-line"><i id="stepsLine"></i></div>
-      <div class="step"><div class="num">1</div><h3>سجّل حسابك</h3><p>بالاسم الذي سيظهر في ملفك، وتبدأ فترتك التجريبية مباشرة.</p></div>
+      <div class="step"><div class="num">1</div><h3>سجّل مجانًا</h3><p>بالاسم الذي سيظهر في ملفك، بدون أي دفع.</p></div>
       <div class="step"><div class="num">2</div><h3>أنشئ ملفًا جديدًا</h3><p>يُفتح لك مشروع فيه كل صفحات ملف الإنجاز.</p></div>
       <div class="step"><div class="num">3</div><h3>عبّئ وارفع شواهدك</h3><p>بياناتك، جداولك، صورك، وملفات الشواهد برموز QR.</p></div>
-      <div class="step"><div class="num">4</div><h3>نزّل PDF</h3><p>ملف جاهز للطباعة والإرسال، وتقدر تعدّله متى شئت.</p></div>
+      <div class="step"><div class="num">4</div><h3>اشترك ونزّل PDF</h3><p>عند الانتهاء اشترك ونزّل ملفك جاهزًا للطباعة، وعدّله متى شئت.</p></div>
     </div>
   </div>
 </section>
@@ -389,7 +389,7 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
 <!-- ============ الأسعار ============ -->
 <section id="pricing" style="background:var(--white);border-block:1px solid var(--line)">
   <div class="wrap" style="text-align:center">
-    <div class="sec-h reveal"><span class="eyebrow">الاشتراك</span><h2>اشتراك واحد، كل المزايا</h2><p id="trialNote">جرّب المنصة مجانًا قبل الاشتراك</p></div>
+    <div class="sec-h reveal"><span class="eyebrow">الاشتراك</span><h2>اشتراك واحد، كل المزايا</h2><p id="trialNote">سجّل وأنشئ ملفك وعدّله مجانًا، واشترك فقط عندما تريد تنزيله PDF</p></div>
     <div class="toggle" id="toggle"><span class="knob" id="knob"></span><button data-plan="monthly">شهري</button><button data-plan="yearly" class="on">سنوي<span class="save-tag" id="saveTag"></span></button></div>
     <div class="price-card reveal">
       <div class="price"><span id="priceNum">199</span> <small id="pricePer">ر.س / سنة</small></div>
@@ -401,7 +401,7 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
         <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>تصدير PDF غير محدود</li>
         <li><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>حفظ تلقائي وتعديل في أي وقت</li>
       </ul>
-      <a class="btn primary xl glow" style="width:100%" href="/register">ابدأ فترتك التجريبية</a>
+      <a class="btn primary xl glow" style="width:100%" href="/register">سجّل مجانًا وابدأ</a>
     </div>
   </div>
 </section>
@@ -649,6 +649,7 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
   // ---------- الأسئلة ----------
   const FAQ = [
     ['هل أقدر أعدّل الصفحات أو أضيف صفحات جديدة؟', 'نعم. كل صفحة قابلة للتعديل بالكامل، وتقدر تضيف صفحات جديدة أو تحذف وتكرر وترتب الصفحات كما تريد.'],
+    ['هل التسجيل مجاني؟', 'نعم. التسجيل وإنشاء الملفات وتعديلها ورفع الشواهد ومعاينة الملف كلها مجانية. الاشتراك مطلوب فقط لتنزيل ملف الإنجاز النهائي بصيغة PDF.'],
     ['هل يحفظ الموقع عملي تلقائيًا؟', 'نعم، كل تعديل يُحفظ مباشرة. تقدر تقفل الصفحة وترجع لملفك في أي وقت ومن أي جهاز.'],
     ['كيف تعمل رموز QR؟', 'ترفع ملف الشاهد (PDF أو Word أو صورة) أو تضع رابطه، ويتولد له رمز QR داخل ملفك. أي شخص يمسح الرمز بجواله يفتح الشاهد مباشرة.'],
     ['هل القالب مناسب لكل التخصصات؟', 'القالب مبني على ملف إنجاز معلمة صعوبات تعلم ولغتي، لكن كل العناوين والمحتوى قابلة للتعديل لتناسب أي تخصص ومرحلة.'],

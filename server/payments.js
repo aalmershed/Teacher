@@ -9,7 +9,7 @@ const PLANS = {
   monthly: { id: 'monthly', name: 'اشتراك شهري', price: Number(process.env.PRICE_MONTHLY || 29), days: 30 },
   yearly: { id: 'yearly', name: 'اشتراك سنوي', price: Number(process.env.PRICE_YEARLY || 199), days: 365 },
 };
-const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 7);
+const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 0);
 const PROVIDER = process.env.PAYMENT_PROVIDER || 'mock';
 
 function currentSubscription(userId) {
