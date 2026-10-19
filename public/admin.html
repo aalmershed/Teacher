@@ -55,6 +55,8 @@ details.tbl summary{cursor:pointer;color:var(--brand-d);font-weight:700;font-siz
 details.tbl table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.88em}
 details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--line);text-align:right}
 .settings{max-width:460px;padding:20px}
+.chk{display:flex;align-items:center;gap:8px;margin:6px 0;font-weight:700}
+.chk input{width:18px;height:18px;accent-color:var(--brand)}
 .empty{padding:30px;text-align:center;color:var(--muted)}
 .cform{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 14px}
 .code{font-family:monospace;font-weight:700;direction:ltr;display:inline-block;background:var(--bg);padding:.1em .5em;border-radius:6px}
@@ -127,6 +129,18 @@ details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--l
       <div class="field"><label for="pMonthly">الاشتراك الشهري (ر.س)</label><input class="input" id="pMonthly" type="number" min="1" step="0.01" dir="ltr"></div>
       <div class="field"><label for="pYearly">الاشتراك السنوي (ر.س)</label><input class="input" id="pYearly" type="number" min="1" step="0.01" dir="ltr"></div>
       <button class="btn primary" id="saveSettings">حفظ الأسعار</button>
+    </div>
+    <div class="card settings" style="margin-top:16px">
+      <h3 style="margin-top:0">طرق الدفع</h3>
+      <p class="muted" style="margin-top:0">فعّل الطريقة هنا بعد ما تفعّلها ميسر في حسابك. زر Apple Pay يظهر على أجهزة Apple ومتصفح Safari فقط، وSamsung Pay على أجهزة سامسونج.</p>
+      <label class="chk"><input type="checkbox" checked disabled> مدى / فيزا / ماستركارد</label>
+      <label class="chk"><input type="checkbox" class="pm" value="applepay"> Apple Pay</label>
+      <label class="chk"><input type="checkbox" class="pm" value="stcpay"> STC Pay</label>
+      <label class="chk"><input type="checkbox" class="pm" value="samsungpay"> Samsung Pay</label>
+      <div class="field" style="margin-top:10px"><label for="samsungSid">Samsung Pay Service ID (تعطيك إياه ميسر)</label><input class="input" id="samsungSid" dir="ltr"></div>
+      <div class="field"><label for="appleFile">ملف توثيق دومين Apple Pay (من لوحة ميسر)</label>
+        <input class="input" id="appleFile" type="file"><div class="muted" id="appleFileState" style="font-size:.85em;margin-top:4px"></div></div>
+      <button class="btn primary" id="saveMethods">حفظ طرق الدفع</button>
     </div>
   </section>
 
@@ -428,7 +442,24 @@ $('cRows').addEventListener('click', async (e) => {
 async function loadSettings() {
   const s = await api('GET', '/api/admin/settings');
   $('pMonthly').value = s.priceMonthly; $('pYearly').value = s.priceYearly;
+  document.querySelectorAll('.pm').forEach((c) => { c.checked = s.methods.includes(c.value); });
+  $('samsungSid').value = s.samsungServiceId || '';
+  $('appleFileState').textContent = s.appleDomainFile
+    ? `✓ ملف التوثيق مرفوع ومتاح على ${location.origin}/.well-known/apple-developer-merchantid-domain-association`
+    : 'لم يُرفع ملف التوثيق بعد';
 }
+$('saveMethods').onclick = async () => {
+  const f = $('appleFile').files[0];
+  const body = {
+    methods: [...document.querySelectorAll('.pm:checked')].map((c) => c.value),
+    samsungServiceId: $('samsungSid').value,
+    appleDomainFile: f ? await f.text() : undefined,
+  };
+  if (body.methods.includes('samsungpay') && !body.samsungServiceId.trim()) return toast('Samsung Pay يحتاج Service ID — لن يظهر بدونه', 'err');
+  await act(() => api('PUT', '/api/admin/payment-methods', body), 'تم حفظ طرق الدفع');
+  $('appleFile').value = '';
+  loadSettings();
+};
 $('saveSettings').onclick = () => act(() => api('PUT', '/api/admin/settings', { priceMonthly: $('pMonthly').value, priceYearly: $('pYearly').value }), 'تم حفظ الأسعار');
 
 // ---------- إصدار الموقع: هل وصل آخر تحديث من GitHub؟ ----------

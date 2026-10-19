@@ -24,8 +24,16 @@ const MOYASAR = {
   publishableKey: process.env.MOYASAR_PUBLISHABLE_KEY || '',
   secretKey: process.env.MOYASAR_SECRET_KEY || '',
   apiBase: (process.env.MOYASAR_API_BASE || 'https://api.moyasar.com').replace(/\/+$/, ''),
-  methods: (process.env.MOYASAR_METHODS || 'creditcard').split(',').map((m) => m.trim()).filter(Boolean),
 };
+
+// طرق الدفع: تُختار من لوحة الإدارة، والافتراضي من متغيرات البيئة. البطاقات (مدى/فيزا/ماستركارد) مفعّلة دائمًا
+const PAY_METHODS = ['creditcard', 'applepay', 'stcpay', 'samsungpay'];
+function paymentMethods() {
+  const raw = getSetting('pay_methods') ?? process.env.MOYASAR_METHODS ?? 'creditcard';
+  const list = raw.split(',').map((m) => m.trim()).filter((m) => PAY_METHODS.includes(m));
+  return ['creditcard', ...list.filter((m) => m !== 'creditcard')];
+}
+const samsungServiceId = () => getSetting('samsung_service_id') ?? process.env.MOYASAR_SAMSUNG_SERVICE_ID ?? '';
 if (PROVIDER === 'moyasar' && (!MOYASAR.publishableKey || !MOYASAR.secretKey)) {
   console.warn('⚠ PAYMENT_PROVIDER=moyasar لكن MOYASAR_PUBLISHABLE_KEY أو MOYASAR_SECRET_KEY غير مضبوط — الدفع لن يعمل');
 }
@@ -131,7 +139,7 @@ function createCheckout(userId, planId, baseUrl, couponCode) {
         currency: 'SAR',
         description: `${plan.name}${coupon ? ' (بعد الخصم)' : ''} — ملف إنجاز المعلم`,
         callback_url: `${baseUrl}/payments/moyasar/callback`,
-        methods: MOYASAR.methods,
+        ...walletConfig(token),
         supported_networks: ['mada', 'visa', 'mastercard'],
         metadata: { ref: token },
         ...(process.env.MOYASAR_API_BASE ? { base_url: MOYASAR.apiBase } : {}),
@@ -139,6 +147,19 @@ function createCheckout(userId, planId, baseUrl, couponCode) {
     };
   }
   throw new Error('بوابة الدفع غير مهيأة بعد');
+}
+
+// إعدادات Apple Pay و Samsung Pay لنموذج ميسر (تظهر أزرارها فقط على الأجهزة والمتصفحات الداعمة)
+function walletConfig(token) {
+  let methods = paymentMethods();
+  const sid = samsungServiceId();
+  if (!sid) methods = methods.filter((m) => m !== 'samsungpay'); // سامسونج باي يحتاج Service ID من ميسر
+  const label = 'ملف إنجاز المعلم';
+  return {
+    methods,
+    ...(methods.includes('applepay') ? { apple_pay: { country: 'SA', label, validate_merchant_url: `${MOYASAR.apiBase}/v1/applepay/initiate` } } : {}),
+    ...(methods.includes('samsungpay') ? { samsung_pay: { service_id: sid, order_number: token, country: 'SA', label } } : {}),
+  };
 }
 
 // يتحقق من عملية الدفع مباشرة من ميسر ثم يفعّل الاشتراك (آمن للتكرار: لا يفعّل نفس الدفعة مرتين)
@@ -203,4 +224,4 @@ function recordManualPayment(userId, planId, adminId) {
   return ref;
 }
 
-module.exports = { evaluateCoupon, couponUses, normCode, getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };
+module.exports = { paymentMethods, samsungServiceId, PAY_METHODS, evaluateCoupon, couponUses, normCode, getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };

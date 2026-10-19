@@ -666,7 +666,23 @@ app.delete('/api/admin/coupons/:id', requireAdmin, (req, res) => {
 // إعدادات الموقع (الأسعار)
 app.get('/api/admin/settings', requireAdmin, (_req, res) => {
   const p = payments.getPlans();
-  res.json({ priceMonthly: p.monthly.price, priceYearly: p.yearly.price });
+  res.json({
+    priceMonthly: p.monthly.price, priceYearly: p.yearly.price,
+    methods: payments.paymentMethods(), samsungServiceId: payments.samsungServiceId(),
+    appleDomainFile: !!payments.getSetting('apple_domain_file'),
+  });
+});
+
+// طرق الدفع الإضافية (Apple Pay / STC Pay / Samsung Pay) وملف توثيق دومين Apple Pay
+app.put('/api/admin/payment-methods', requireAdmin, (req, res) => {
+  const methods = (Array.isArray(req.body.methods) ? req.body.methods : []).filter((m) => payments.PAY_METHODS.includes(m));
+  payments.setSetting('pay_methods', ['creditcard', ...methods.filter((m) => m !== 'creditcard')].join(','));
+  if (req.body.samsungServiceId !== undefined) payments.setSetting('samsung_service_id', String(req.body.samsungServiceId).trim().slice(0, 200));
+  if (typeof req.body.appleDomainFile === 'string' && req.body.appleDomainFile.trim()) {
+    if (req.body.appleDomainFile.length > 20000) return res.status(400).json({ error: 'ملف التوثيق أكبر من المتوقع — تأكد أنك اخترت الملف الصحيح' });
+    payments.setSetting('apple_domain_file', req.body.appleDomainFile.trim());
+  }
+  res.json({ ok: true });
 });
 app.put('/api/admin/settings', requireAdmin, (req, res) => {
   const m = Number(req.body.priceMonthly), y = Number(req.body.priceYearly);
@@ -681,6 +697,12 @@ app.put('/api/admin/settings', requireAdmin, (req, res) => {
 app.use('/vendor/moyasar', express.static(path.join(__dirname, '..', 'node_modules', 'moyasar-payment-form', 'dist'), { maxAge: '7d' }));
 app.use('/fonts', express.static(path.join(__dirname, '..', 'node_modules', '@fontsource'), { maxAge: '30d' }));
 app.get(['/', '/index.html'], (req, res) => res.type('html').send(seo.renderHome(PUBLIC, baseUrl(req), payments.getPlans())));
+// ملف توثيق الدومين لـ Apple Pay (يُرفع من لوحة الإدارة)
+app.get('/.well-known/apple-developer-merchantid-domain-association', (_req, res) => {
+  const f = payments.getSetting('apple_domain_file');
+  if (!f) return res.status(404).end();
+  res.type('text/plain').send(f);
+});
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robots(baseUrl(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemap(baseUrl(req))));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
