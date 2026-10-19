@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('playwright-core');
-const { renderProject } = require('./render');
+const { renderProject, fontCss } = require('./render');
+const CertRender = require('./cert-render');
 const { db, DATA_DIR } = require('./db');
 
 function findChromium() {
@@ -61,4 +62,16 @@ async function projectToPdf(project, baseUrl) {
   }
 }
 
-module.exports = { projectToPdf };
+async function certificateToPdf(cert) {
+  const html = CertRender.render(cert.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(cert.user_id) });
+  const page = await newPage();
+  try {
+    await page.setContent(html, { waitUntil: 'load' });
+    await page.waitForSelector('body[data-fitted]', { timeout: 15000 }).catch(() => {});
+    return await page.pdf({ preferCSSPageSize: true, printBackground: true });
+  } finally {
+    await page.close();
+  }
+}
+
+module.exports = { projectToPdf, certificateToPdf };

@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>شهادة شكر وتقدير — ملف إنجاز المعلم</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#5f978f">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bar .ttl-in{font-weight:800;font-size:1.05em;border:1px solid transparent;background:transparent;padding:.35em .5em;border-radius:8px;min-width:0;flex:1;max-width:360px;font-family:inherit;color:inherit}
+.bar .ttl-in:hover,.bar .ttl-in:focus{border-color:var(--line);background:#fff;outline:none}
+.save-st{font-size:.85em;color:var(--muted);white-space:nowrap}
+.wrap{display:grid;grid-template-columns:minmax(320px,410px) 1fr;gap:22px;padding:22px 0 60px;align-items:start}
+.form{padding:18px 18px 8px}
+.form h3{font-size:1em;margin:18px 0 10px;color:var(--brand-d)}
+.form h3:first-child{margin-top:0}
+.designs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.dz{border:2px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;background:#fff;padding:0;text-align:center;font:inherit;font-size:.82em;font-weight:700;color:var(--ink)}
+.dz.sel{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-l)}
+.dz .mini{width:100%;aspect-ratio:297/210;position:relative;overflow:hidden;pointer-events:none}
+.dz .mini iframe{position:absolute;top:0;right:0;width:1123px;height:794px;border:0;transform-origin:top right}
+.dz span{display:block;padding:4px 0 5px}
+textarea.input{min-height:84px;resize:vertical;line-height:1.7}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:.82em;color:var(--muted);margin-top:4px}
+.logos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.logo-box{border:2px dashed var(--line);border-radius:12px;min-height:92px;display:grid;place-items:center;text-align:center;cursor:pointer;font-size:.85em;color:var(--muted);position:relative;padding:8px;background:#fbfdfc}
+.logo-box img{max-width:100%;max-height:70px;object-fit:contain}
+.logo-box .rm{position:absolute;top:4px;left:4px;padding:.1em .45em;font-size:.8em}
+.pv{position:sticky;top:76px}
+.pv-frame{background:#e9ece9;border-radius:16px;padding:14px}
+.pv-box{width:100%;aspect-ratio:297/210;position:relative;overflow:hidden;border-radius:6px;box-shadow:0 6px 24px rgba(0,0,0,.14);background:#fff}
+.pv-box iframe{position:absolute;top:0;right:0;width:1123px;height:794px;border:0;transform-origin:top right}
+.pv-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:10px;font-weight:700}
+.pv-acts{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+@media (max-width:900px){.wrap{grid-template-columns:1fr}.pv{position:static;order:-1}}
+@media (max-width:560px){.save-st{display:none}.bar .ttl-in{min-width:120px}.bar{flex-wrap:nowrap}#pdfBtn{padding:.5em .8em;font-size:.9em}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="container bar">
+    <a class="btn ghost sm" href="/app#certs" title="رجوع">→</a>
+    <input class="ttl-in" id="title" maxlength="100" aria-label="اسم الشهادة">
+    <span class="save-st" id="saveSt"></span>
+    <div class="spacer"></div>
+    <button class="btn primary" id="pdfBtn">⬇ تنزيل PDF</button>
+  </div>
+</header>
+
+<main class="container wrap">
+  <div class="card form">
+    <h3>التصميم</h3>
+    <div class="designs" id="designs"></div>
+
+    <h3>نص الشهادة</h3>
+    <div class="field"><label for="f-title">العنوان</label><input class="input" id="f-title" maxlength="80"></div>
+    <div class="field"><label for="f-intro">السطر الأول</label><input class="input" id="f-intro" maxlength="300" placeholder="مثال: تتقدم مدرسة حفصة بنت عمر"></div>
+    <div class="field"><label for="f-lead">السطر الثاني</label><input class="input" id="f-lead" maxlength="300" placeholder="مثال: بالشكر والتقدير للطالبة المتميزة"></div>
+    <div class="field"><label for="f-names">الاسم (أو عدة أسماء)</label>
+      <textarea class="input" id="f-names" placeholder="اكتب كل اسم في سطر"></textarea>
+      <div class="hint" id="namesHint">اكتب كل اسم في سطر مستقل، وتُنشأ شهادة لكل اسم في ملف واحد.</div></div>
+    <div class="field"><label for="f-body">نص التكريم</label><textarea class="input" id="f-body" style="min-height:110px" maxlength="1200"></textarea></div>
+    <div class="field"><label for="f-date">التاريخ (اختياري)</label><input class="input" id="f-date" maxlength="80" placeholder="مثال: تحريرًا في 15 / 4 / 1448هـ"></div>
+
+    <h3>التوقيعات</h3>
+    <div class="row2">
+      <div class="field"><label for="s1-label">التوقيع الأيمن</label><input class="input" id="s1-label" maxlength="60" placeholder="الصفة: المعلمة"><input class="input" id="s1-name" maxlength="80" placeholder="الاسم" style="margin-top:6px"></div>
+      <div class="field"><label for="s2-label">التوقيع الأيسر</label><input class="input" id="s2-label" maxlength="60" placeholder="الصفة: مديرة المدرسة"><input class="input" id="s2-name" maxlength="80" placeholder="الاسم" style="margin-top:6px"></div>
+    </div>
+
+    <h3>الشعارات (اختياري)</h3>
+    <div class="logos">
+      <div class="logo-box" data-logo="logoRight"></div>
+      <div class="logo-box" data-logo="logoLeft"></div>
+    </div>
+    <p class="hint">ارفع شعار مدرستك أو أي شعار لديك حق استخدامه (PNG بخلفية شفافة يعطي أفضل نتيجة).</p>
+    <input type="file" id="logoFile" accept="image/png,image/jpeg,image/webp" hidden>
+  </div>
+
+  <div class="pv">
+    <div class="pv-frame">
+      <div class="pv-box" id="pvBox"><iframe id="pv" title="معاينة الشهادة"></iframe></div>
+      <div class="pv-nav" id="pvNav" hidden><button class="btn sm" id="pvPrev">→</button><span id="pvIdx" dir="ltr"></span><button class="btn sm" id="pvNext">←</button></div>
+    </div>
+    <div class="pv-acts"><button class="btn primary lg" id="pdfBtn2">⬇ تنزيل PDF</button></div>
+  </div>
+</main>
+
+<script src="/assets/js/common.js"></script>
+<script src="/assets/js/cert-render.js"></script>
+<script>
+const id = location.pathname.split('/').pop();
+const $ = (x) => document.getElementById(x);
+let data, designs = [], idx = 0, watermark = true, saveTimer = null;
+const FONT = '@import url(/assets/fonts.css);';
+const imgUrl = (u) => '/api/uploads/' + u;
+
+function fitFrames() {
+  const box = $('pvBox');
+  $('pv').style.transform = `scale(${box.clientWidth / 1123})`;
+  document.querySelectorAll('.dz .mini').forEach((m) => { m.firstElementChild.style.transform = `scale(${m.clientWidth / 1123})`; });
+}
+addEventListener('resize', fitFrames);
+
+function renderPreview() {
+  const n = data.names.length;
+  idx = Math.min(idx, Math.max(0, n - 1));
+  $('pv').srcdoc = CertRender.render(data, { fontCss: FONT, imageUrl: imgUrl, watermark, index: idx, screen: true });
+  $('pvNav').hidden = n < 2;
+  $('pvIdx').textContent = `${idx + 1} / ${n}`;
+  $('namesHint').textContent = n > 1 ? `سيتم إنشاء ${n} شهادات في ملف PDF واحد.` : 'اكتب كل اسم في سطر مستقل، وتُنشأ شهادة لكل اسم في ملف واحد.';
+}
+function renderDesigns() {
+  $('designs').innerHTML = designs.map((d) => `<button class="dz ${d.id === data.design ? 'sel' : ''}" data-id="${d.id}"><div class="mini"><iframe tabindex="-1"></iframe></div><span>${esc(d.name)}</span></button>`).join('');
+  $('designs').querySelectorAll('.dz').forEach((b) => {
+    b.querySelector('iframe').srcdoc = CertRender.render({ ...data, design: b.dataset.id }, { fontCss: FONT, imageUrl: imgUrl, index: idx, screen: true });
+    b.onclick = () => { data.design = b.dataset.id; $('designs').querySelectorAll('.dz').forEach((x) => x.classList.toggle('sel', x === b)); changed(); };
+  });
+  fitFrames();
+}
+function renderLogos() {
+  document.querySelectorAll('.logo-box').forEach((box) => {
+    const key = box.dataset.logo, v = data[key];
+    const label = key === 'logoRight' ? 'الشعار الأيمن' : 'الشعار الأيسر';
+    box.innerHTML = v ? `<img src="${imgUrl(v)}" alt=""><button class="btn sm ghost danger rm" title="إزالة">✕</button>` : `<div>＋<br>${label}</div>`;
+    const rm = box.querySelector('.rm');
+    if (rm) rm.onclick = (e) => { e.stopPropagation(); data[key] = ''; renderLogos(); changed(); };
+    box.onclick = () => { $('logoFile').dataset.key = key; $('logoFile').click(); };
+  });
+}
+$('logoFile').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  const fd = new FormData(); fd.append('file', f);
+  try { const r = await api('POST', '/api/uploads', fd); data[$('logoFile').dataset.key] = r.id; renderLogos(); changed(); }
+  catch (err) { toast(err.message, 'err'); }
+};
+
+// ربط الحقول بالبيانات
+const FIELDS = { 'f-title': 'title', 'f-intro': 'intro', 'f-lead': 'lead', 'f-body': 'body', 'f-date': 'date' };
+function fillForm() {
+  Object.entries(FIELDS).forEach(([el, k]) => { $(el).value = data[k] || ''; });
+  $('f-names').value = data.names.join('\n');
+  $('s1-label').value = data.sign1.label; $('s1-name').value = data.sign1.name;
+  $('s2-label').value = data.sign2.label; $('s2-name').value = data.sign2.name;
+}
+function readForm() {
+  Object.entries(FIELDS).forEach(([el, k]) => { data[k] = $(el).value; });
+  data.names = $('f-names').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  if (!data.names.length) data.names = [''];
+  data.sign1 = { label: $('s1-label').value, name: $('s1-name').value };
+  data.sign2 = { label: $('s2-label').value, name: $('s2-name').value };
+}
+document.querySelector('.form').addEventListener('input', (e) => { if (e.target.id !== 'logoFile') { readForm(); changed(); } });
+$('title').addEventListener('input', () => scheduleSave());
+
+let designTimer = null;
+function changed() {
+  renderPreview();
+  clearTimeout(designTimer); designTimer = setTimeout(renderDesigns, 900);
+  scheduleSave();
+}
+function scheduleSave() {
+  $('saveSt').textContent = 'جارٍ الحفظ...';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(save, 700);
+}
+async function save() {
+  clearTimeout(saveTimer);
+  try { await api('PUT', '/api/certificates/' + id, { title: $('title').value, data }); $('saveSt').textContent = 'تم الحفظ ✓'; }
+  catch (e) { $('saveSt').textContent = 'تعذر الحفظ'; toast(e.message, 'err'); }
+}
+$('pvPrev').onclick = () => { idx = Math.max(0, idx - 1); renderPreview(); };
+$('pvNext').onclick = () => { idx = Math.min(data.names.length - 1, idx + 1); renderPreview(); };
+const doPdf = async (btn) => { await save(); downloadPdf(null, btn, `/api/certificates/${id}/pdf`, 'شهادة.pdf'); };
+$('pdfBtn').onclick = (e) => doPdf(e.currentTarget);
+$('pdfBtn2').onclick = (e) => doPdf(e.currentTarget);
+
+(async () => {
+  const user = await currentUser();
+  if (!user) return;
+  watermark = !(user.isAdmin || user.subscription.active);
+  try {
+    const r = await api('GET', '/api/certificates/' + id);
+    data = CertRender.normalize(r.certificate.data); designs = r.designs;
+    $('title').value = r.certificate.title;
+    fillForm(); renderLogos(); renderPreview(); renderDesigns(); fitFrames();
+    $('saveSt').textContent = 'كل التغييرات محفوظة';
+  } catch (e) { toast(e.message, 'err'); setTimeout(() => { location.href = '/app'; }, 1200); }
+})();
+</script>
+</body>
+</html>

@@ -9,8 +9,9 @@ const QRCode = require('qrcode');
 
 const { db, DATA_DIR } = require('./db');
 const { createProjectData, applyAccountName, newId } = require('./template');
-const { renderProject, THEMES, cleanRich } = require('./render');
-const { projectToPdf } = require('./pdf');
+const { renderProject, THEMES, cleanRich, fontCss } = require('./render');
+const { projectToPdf, certificateToPdf } = require('./pdf');
+const CertRender = require('./cert-render');
 const payments = require('./payments');
 const seo = require('./seo');
 const mail = require('./mail');
@@ -371,6 +372,67 @@ app.get('/api/projects/:id/pdf', requireAuth, requireActive, async (req, res, ne
   } catch (e) { next(e); }
 });
 
+// ---------- شهادات الشكر والتقدير ----------
+const UPLOAD_ID = /^[a-f0-9]{24}$/;
+function cleanCert(userId, d) {
+  const x = CertRender.normalize(d);
+  const owns = db.prepare('SELECT 1 FROM uploads WHERE id = ? AND user_id = ?');
+  const logo = (id) => (UPLOAD_ID.test(String(id || '')) && owns.get(id, userId) ? id : '');
+  const sign = (s) => ({ label: str(s.label, 60), name: str(s.name, 80) });
+  return {
+    design: x.design, title: str(x.title, 80), intro: str(x.intro, 300), lead: str(x.lead, 300),
+    names: x.names.slice(0, 300).map((n) => str(n, 80)), body: str(x.body, 1200), date: str(x.date, 80),
+    sign1: sign(x.sign1), sign2: sign(x.sign2), logoRight: logo(x.logoRight), logoLeft: logo(x.logoLeft),
+  };
+}
+function loadCert(req, res) {
+  const row = db.prepare('SELECT * FROM certificates WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
+  if (!row) { res.status(404).json({ error: 'الشهادة غير موجودة' }); return null; }
+  return { ...row, data: JSON.parse(row.data) };
+}
+app.get('/api/certificates', requireAuth, (req, res) => {
+  const rows = db.prepare('SELECT * FROM certificates WHERE user_id = ? ORDER BY updated_at DESC').all(req.user.id);
+  res.json({ certificates: rows.map((r) => ({ id: r.id, title: r.title, updated_at: r.updated_at, data: JSON.parse(r.data) })), designs: CertRender.designs });
+});
+app.post('/api/certificates', requireAuth, (req, res) => {
+  if (db.prepare('SELECT COUNT(*) n FROM certificates WHERE user_id = ?').get(req.user.id).n >= 200) return res.status(400).json({ error: 'وصلت للحد الأقصى من الشهادات' });
+  const data = cleanCert(req.user.id, { design: req.body.design });
+  const info = db.prepare('INSERT INTO certificates (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, str(req.body.title, 100) || 'شهادة شكر وتقدير', JSON.stringify(data));
+  res.json({ id: Number(info.lastInsertRowid) });
+});
+app.get('/api/certificates/:id', requireAuth, (req, res) => {
+  const c = loadCert(req, res);
+  if (c) res.json({ certificate: { id: c.id, title: c.title, data: c.data, updated_at: c.updated_at }, designs: CertRender.designs });
+});
+app.put('/api/certificates/:id', requireAuth, (req, res) => {
+  const c = loadCert(req, res);
+  if (!c) return;
+  const data = cleanCert(req.user.id, req.body.data);
+  const title = str(req.body.title, 100) || c.title;
+  db.prepare("UPDATE certificates SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?").run(title, JSON.stringify(data), c.id);
+  res.json({ ok: true, data });
+});
+app.post('/api/certificates/:id/duplicate', requireAuth, (req, res) => {
+  const c = loadCert(req, res);
+  if (!c) return;
+  const info = db.prepare('INSERT INTO certificates (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, str(c.title + ' (نسخة)', 100), JSON.stringify(c.data));
+  res.json({ id: Number(info.lastInsertRowid) });
+});
+app.delete('/api/certificates/:id', requireAuth, (req, res) => {
+  db.prepare('DELETE FROM certificates WHERE id = ? AND user_id = ?').run(Number(req.params.id), req.user.id);
+  res.json({ ok: true });
+});
+app.get('/api/certificates/:id/pdf', requireAuth, requireActive, async (req, res, next) => {
+  try {
+    const c = loadCert(req, res);
+    if (!c) return;
+    const pdf = await certificateToPdf(c);
+    const name = encodeURIComponent((c.title || 'شهادة').replace(/[\\/:*?"<>|]/g, '-') + '.pdf');
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${name}` });
+    res.send(Buffer.from(pdf));
+  } catch (e) { next(e); }
+});
+
 // ---------- الصور ----------
 const upload = multer({
   storage: multer.diskStorage({
@@ -711,6 +773,9 @@ app.use(express.static(PUBLIC, { extensions: ['html'] }));
 const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
 app.get('/editor/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'editor.html')));
+app.get('/certificate/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'certificate.html')));
+app.get('/assets/fonts.css', (_req, res) => res.type('text/css').set('Cache-Control', 'public, max-age=86400').send(fontCss(false)));
+app.get('/assets/js/cert-render.js', (_req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'cert-render.js')));
 
 app.use((err, _req, res, _next) => {
   console.error(err);

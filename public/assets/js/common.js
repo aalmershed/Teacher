@@ -85,11 +85,11 @@ function showSubscribePrompt() {
   m.classList.add('open');
 }
 
-async function downloadPdf(projectId, btn) {
+async function downloadPdf(projectId, btn, url, fallbackName) {
   const original = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> جارٍ التجهيز...'; }
   try {
-    const res = await fetch(`/api/projects/${projectId}/pdf`, { credentials: 'same-origin' });
+    const res = await fetch(url || `/api/projects/${projectId}/pdf`, { credentials: 'same-origin' });
     if (!res.ok) {
       let msg = 'تعذر إنشاء ملف PDF';
       let code = '';
@@ -102,7 +102,7 @@ async function downloadPdf(projectId, btn) {
     const m = cd.match(/filename\*=UTF-8''([^;]+)/);
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = m ? decodeURIComponent(m[1]) : 'ملف-إنجاز.pdf';
+    a.download = m ? decodeURIComponent(m[1]) : (fallbackName || 'ملف-إنجاز.pdf');
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);

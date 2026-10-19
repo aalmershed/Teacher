@@ -41,19 +41,24 @@ const FONTS = [
   ['Tajawal', 800, 'tajawal/files/tajawal-arabic-800-normal.woff2'],
   ['Amiri', 400, 'amiri/files/amiri-arabic-400-normal.woff2'],
   ['Amiri', 700, 'amiri/files/amiri-arabic-700-normal.woff2'],
+  // الأرقام والحروف الإنجليزية بنفس الخط بدل خط النظام
+  ['Tajawal', 500, 'tajawal/files/tajawal-latin-500-normal.woff2', 'U+0000-00FF'],
+  ['Tajawal', 800, 'tajawal/files/tajawal-latin-800-normal.woff2', 'U+0000-00FF'],
+  ['Amiri', 700, 'amiri/files/amiri-latin-700-normal.woff2', 'U+0000-00FF'],
 ];
+const rangeCss = (r) => (r ? `unicode-range:${r};` : '');
 let embeddedFontCss = null;
 function fontCss(embed) {
   if (embed) {
     if (!embeddedFontCss) {
-      embeddedFontCss = FONTS.map(([f, w, file]) => {
+      embeddedFontCss = FONTS.map(([f, w, file, r]) => {
         const b64 = fs.readFileSync(path.join(FONT_DIR, file)).toString('base64');
-        return `@font-face{font-family:'${f}';font-weight:${w};src:url(data:font/woff2;base64,${b64}) format('woff2');}`;
+        return `@font-face{font-family:'${f}';font-weight:${w};${rangeCss(r)}src:url(data:font/woff2;base64,${b64}) format('woff2');}`;
       }).join('\n');
     }
     return embeddedFontCss;
   }
-  return FONTS.map(([f, w, file]) => `@font-face{font-family:'${f}';font-weight:${w};src:url(/fonts/${file}) format('woff2');}`).join('\n');
+  return FONTS.map(([f, w, file, r]) => `@font-face{font-family:'${f}';font-weight:${w};${rangeCss(r)}src:url(/fonts/${file}) format('woff2');}`).join('\n');
 }
 
 // ---------- الكتل ----------
@@ -418,4 +423,4 @@ a.pill::after{content:' ⟵';color:${t.accent2}}
 `;
 }
 
-module.exports = { renderProject, THEMES, cleanRich, spansSpread };
+module.exports = { renderProject, THEMES, cleanRich, spansSpread, fontCss };
