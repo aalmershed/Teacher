@@ -13,7 +13,9 @@ say "== إعداد منصة ملف إنجاز المعلم =="
 if [ -f .env ] && [ "${RECONFIGURE:-}" != "1" ]; then
   echo "ملف الإعدادات .env موجود مسبقًا — سأستخدمه (لإعادة الإعداد: RECONFIGURE=1 bash setup.sh)"
 else
-  IP=$(curl -fsS --max-time 10 https://api.ipify.org || true)
+  IP=$(curl -4 -fsS --max-time 10 https://api.ipify.org || true)
+  # بديل: أول عنوان IPv4 عام على الخادم نفسه
+  [ -z "$IP" ] && IP=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^[0-9]+\.' | grep -vE '^(10|127|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.' | head -1 || true)
   DEFAULT_DOMAIN=""
   [ -n "$IP" ] && DEFAULT_DOMAIN="${IP//./-}.sslip.io"
   echo "عنوان الخادم: ${IP:-غير معروف}"
@@ -21,10 +23,16 @@ else
   DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
   [ -z "$DOMAIN" ] && { echo "لا بد من دومين"; exit 1; }
   ADMIN_EMAIL=$(ask "بريدك (تسجّل به في الموقع لتصبح مديرًا): ")
-  PK=$(ask "مفتاح ميسر العام (يبدأ بـ pk_): ")
-  read -r -s -p "مفتاح ميسر السري (يبدأ بـ sk_ — لن يظهر أثناء الكتابة): " SK; echo
-  case "$PK" in pk_*) ;; *) echo "المفتاح العام يجب أن يبدأ بـ pk_"; exit 1;; esac
-  case "$SK" in sk_*) ;; *) echo "المفتاح السري يجب أن يبدأ بـ sk_"; exit 1;; esac
+  PK=$(ask "مفتاح ميسر العام pk_ (اضغط Enter للتخطي وتفعيل الاشتراكات يدويًا): ")
+  SK=""
+  if [ -n "$PK" ]; then
+    read -r -s -p "مفتاح ميسر السري (يبدأ بـ sk_ — لن يظهر أثناء الكتابة): " SK; echo
+    case "$PK" in pk_*) ;; *) echo "المفتاح العام يجب أن يبدأ بـ pk_"; exit 1;; esac
+    case "$SK" in sk_*) ;; *) echo "المفتاح السري يجب أن يبدأ بـ sk_"; exit 1;; esac
+    PROVIDER=moyasar
+  else
+    PROVIDER=manual
+  fi
   WEBHOOK_SECRET=$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')
 
   umask 077
@@ -32,7 +40,7 @@ else
 DOMAIN=$DOMAIN
 PUBLIC_URL=https://$DOMAIN
 ADMIN_EMAIL=$ADMIN_EMAIL
-PAYMENT_PROVIDER=moyasar
+PAYMENT_PROVIDER=$PROVIDER
 MOYASAR_PUBLISHABLE_KEY=$PK
 MOYASAR_SECRET_KEY=$SK
 MOYASAR_WEBHOOK_SECRET=$WEBHOOK_SECRET
@@ -69,6 +77,10 @@ DOMAIN=$(grep '^DOMAIN=' .env | cut -d= -f2-)
 say "تم! افتح موقعك: https://$DOMAIN"
 echo "إن لم يفتح مباشرة انتظر دقيقة حتى تصدر شهادة الأمان."
 echo "سجّل في الموقع بالبريد الذي أدخلته لتصبح مديرًا."
-echo
-echo "لإشعارات ميسر (اختياري): أضف في لوحة ميسر Webhook على الرابط https://$DOMAIN/payments/moyasar/webhook"
-echo "وكلمة السر (Secret Token): $(grep '^MOYASAR_WEBHOOK_SECRET=' .env | cut -d= -f2-)"
+if grep -q '^PAYMENT_PROVIDER=moyasar' .env; then
+  echo
+  echo "لإشعارات ميسر (اختياري): أضف في لوحة ميسر Webhook على الرابط https://$DOMAIN/payments/moyasar/webhook"
+  echo "وكلمة السر (Secret Token): $(grep '^MOYASAR_WEBHOOK_SECRET=' .env | cut -d= -f2-)"
+else
+  echo "الدفع: تفعيل يدوي — فعّل اشتراكات المعلمين من لوحة الإدارة. لربط ميسر لاحقًا: RECONFIGURE=1 bash setup.sh"
+fi
