@@ -13,6 +13,7 @@ const { renderProject, THEMES, cleanRich } = require('./render');
 const { projectToPdf } = require('./pdf');
 const payments = require('./payments');
 const seo = require('./seo');
+const mail = require('./mail');
 
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -101,6 +102,59 @@ app.post('/api/auth/login', (req, res) => {
   if (user.suspended) return res.status(403).json({ error: 'هذا الحساب موقوف. تواصل مع الدعم.' });
   createSession(res, user.id);
   res.json({ user: publicUser(user) });
+});
+
+// ---------- نسيت كلمة المرور ----------
+const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const RESET_TTL = 60 * 60 * 1000;
+const SUPPORT_CONTACT = process.env.SUPPORT_CONTACT || '';
+const resetHits = new Map(); // حد بسيط للطلبات لكل عنوان IP
+
+app.get('/api/auth/forgot', (_req, res) => res.json({ email: mail.enabled(), contact: SUPPORT_CONTACT }));
+
+app.post('/api/auth/forgot', async (req, res) => {
+  if (!mail.enabled()) return res.status(503).json({ error: 'استعادة كلمة المرور بالبريد غير متاحة حاليًا. تواصل معنا لإعادة تعيينها.' });
+  const now = Date.now();
+  const hits = (resetHits.get(req.ip) || []).filter((t) => now - t < RESET_TTL);
+  if (hits.length >= 5) return res.status(429).json({ error: 'طلبات كثيرة، حاول بعد قليل' });
+  resetHits.set(req.ip, [...hits, now]);
+
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  // نفس الرد دائمًا حتى لا يُعرف هل البريد مسجل أم لا
+  const done = () => res.json({ ok: true });
+  if (!user || user.suspended) return done();
+  const recent = db.prepare('SELECT COUNT(*) n FROM password_resets WHERE user_id = ? AND created_at > ?').get(user.id, now - RESET_TTL).n;
+  if (recent >= 3) return done();
+
+  const token = crypto.randomBytes(32).toString('hex');
+  db.prepare('INSERT INTO password_resets (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)').run(sha256(token), user.id, now + RESET_TTL, now);
+  try {
+    await mail.sendResetEmail(user.email, user.name, `${baseUrl(req)}/reset?token=${token}`);
+  } catch (e) {
+    console.error('reset email', e.message);
+    return res.status(500).json({ error: 'تعذر إرسال البريد الآن، حاول لاحقًا أو تواصل معنا' });
+  }
+  done();
+});
+
+app.post('/api/auth/reset', (req, res) => {
+  const token = String(req.body.token || '');
+  const password = String(req.body.password || '');
+  if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب ألا تقل عن 8 أحرف' });
+  const row = /^[a-f0-9]{64}$/.test(token) && db.prepare('SELECT * FROM password_resets WHERE token_hash = ?').get(sha256(token));
+  if (!row || row.used || row.expires_at < Date.now()) return res.status(400).json({ error: 'الرابط غير صالح أو منتهي. اطلب رابطًا جديدًا.' });
+  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(row.user_id);
+  if (!user || user.suspended) return res.status(400).json({ error: 'الرابط غير صالح' });
+  // الاستخدام لمرة واحدة: التحديث مشروط بأن الرابط لم يُستخدم بعد
+  if (db.prepare('UPDATE password_resets SET used = 1 WHERE token_hash = ? AND used = 0').run(row.token_hash).changes !== 1) {
+    return res.status(400).json({ error: 'الرابط مستخدم مسبقًا' });
+  }
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), user.id);
+  db.prepare('UPDATE password_resets SET used = 1 WHERE user_id = ?').run(user.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(user.id); // تسجيل الخروج من كل الأجهزة
+  createSession(res, user.id);
+  res.json({ ok: true });
 });
 
 app.post('/api/auth/logout', (req, res) => {
@@ -630,7 +684,7 @@ app.get(['/', '/index.html'], (req, res) => res.type('html').send(seo.renderHome
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robots(baseUrl(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemap(baseUrl(req))));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
-const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
+const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
 app.get('/editor/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'editor.html')));
 

@@ -90,6 +90,7 @@ Disallow: /subscribe
 Disallow: /f/
 Disallow: /i/
 Disallow: /b/
+Disallow: /reset
 
 Sitemap: ${base}/sitemap.xml
 `;
@@ -105,6 +106,6 @@ ${urls.map(([u, pr, f]) => `  <url><loc>${base}${u}</loc><lastmod>${day}</lastmo
 }
 
 // صفحات خاصة لا يجب أن تظهر في نتائج البحث (لوحات المستخدم وملفات الشواهد الخاصة بالمعلمين)
-const NOINDEX = /^\/(api|app|editor|admin|subscribe|f|i|b)(\/|$)/;
+const NOINDEX = /^\/(api|app|editor|admin|subscribe|f|i|b|reset)(\/|$)/;
 
 module.exports = { renderHome, robots, sitemap, NOINDEX, FAQ };
