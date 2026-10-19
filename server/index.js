@@ -12,6 +12,7 @@ const { createProjectData, applyAccountName, newId } = require('./template');
 const { renderProject, THEMES, cleanRich } = require('./render');
 const { projectToPdf } = require('./pdf');
 const payments = require('./payments');
+const seo = require('./seo');
 
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -35,6 +36,11 @@ app.use((req, res, next) => {
   const host = req.get('host') || '';
   if (!CANONICAL_HOST || host === CANONICAL_HOST || !['GET', 'HEAD'].includes(req.method) || /^(localhost|127\.0\.0\.1|app)(:\d+)?$/.test(host)) return next();
   res.redirect(301, PUBLIC_URL + req.originalUrl);
+});
+// صفحات المستخدم الخاصة وملفات الشواهد لا تُفهرس في محركات البحث
+app.use((req, res, next) => {
+  if (seo.NOINDEX.test(req.path)) res.set('X-Robots-Tag', 'noindex, nofollow');
+  next();
 });
 app.use(express.json({ limit: '3mb' }));
 app.use(cookieParser());
@@ -620,6 +626,9 @@ app.put('/api/admin/settings', requireAdmin, (req, res) => {
 // ---------- الصفحات ----------
 app.use('/vendor/moyasar', express.static(path.join(__dirname, '..', 'node_modules', 'moyasar-payment-form', 'dist'), { maxAge: '7d' }));
 app.use('/fonts', express.static(path.join(__dirname, '..', 'node_modules', '@fontsource'), { maxAge: '30d' }));
+app.get(['/', '/index.html'], (req, res) => res.type('html').send(seo.renderHome(PUBLIC, baseUrl(req), payments.getPlans())));
+app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robots(baseUrl(req))));
+app.get('/sitemap.xml', (req, res) => res.type('application/xml').send(seo.sitemap(baseUrl(req))));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
 const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
