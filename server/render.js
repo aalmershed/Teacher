@@ -179,6 +179,30 @@ function coverPattern(t, W, H) {
   return `<svg class="cv-bg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="${t.frame}"/>${r.join('')}</svg>`;
 }
 
+// خلفية الورقة: خطوط مائلة مرسومة مرة واحدة كمتجهات. التدرجات المتكررة والظلال الضبابية
+// تجعل قارئ PDF يعيد حسابها مع كل صفحة فيصبح التصفح بطيئًا
+function sheetBg(t, W, H) {
+  const lines = (step, offset, dir) => {
+    const d = [];
+    for (let x = -H + offset; x < W + H; x += step) d.push(dir > 0 ? `M${x} ${H}L${x + H} 0` : `M${x} 0L${x + H} ${H}`);
+    return d.join('');
+  };
+  return `<svg class="sh-bg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="${t.frame}"/>`
+    + `<path d="${lines(9, 1.5, 1)}" stroke="#fff" stroke-width="2.1" opacity=".13" fill="none"/>`
+    + `<path d="${lines(12, 1, -1)}" stroke="#fff" stroke-width="1.4" opacity=".09" fill="none"/></svg>`;
+}
+
+// حلقات الدفتر في المنتصف
+function ringsSvg(t, H) {
+  const r = [];
+  for (let y = 9; y + 3.6 <= H; y += 21) {
+    r.push(`<rect x=".4" y="${y + .6}" width="15.2" height="3.6" rx="1.4" fill="#000" opacity=".12"/>`);
+    r.push(`<rect x=".4" y="${y}" width="15.2" height="3.6" rx="1.4" fill="${t.sand}"/>`);
+    r.push(`<rect x=".4" y="${y + 1.4}" width="15.2" height=".6" fill="#fff"/>`);
+  }
+  return `<div class="rings"><svg viewBox="0 0 16 ${H}" xmlns="http://www.w3.org/2000/svg">${r.join('')}<rect x="7.2" y="0" width="1.6" height="${H}" rx=".8" fill="#cdbb9f"/></svg></div>`;
+}
+
 // ---------- تجميع الصفحات في أوراق ----------
 // الصفحة النصية لا تمتد على صفحتي الدفتر أبدًا حتى لا ينقسم النص بينهما؛
 // الامتداد فقط للصفحات التي فيها صور أو جداول أو أكثر من نوع محتوى
@@ -227,19 +251,21 @@ async function renderProject(project, opts = {}) {
   };
 
   const pattern = layout === 'single' ? coverPattern(theme, 210, 297) : coverPattern(theme, 297, 210);
+  const bg = layout === 'single' ? sheetBg(theme, 210, 297) : sheetBg(theme, 297, 210);
+  const ringsEl = ringsSvg(theme, 210 - 13 - 15);
   const out = [];
   for (let i = 0; i < sheets.length; i++) {
     const s = sheets[i];
     const foot = `<div class="foot"><span>${esc(teacher || '')}</span><span>${i + 1}</span></div>`;
     if (s.kind === 'cover') out.push(`<div class="sheet cover">${pattern}${renderCover(s.pages[0])}</div>`);
     else if (s.kind === 'backcover') out.push(`<div class="sheet cover back">${pattern}<div class="back-mark">${esc(BRAND)}</div></div>`);
-    else if (s.kind === 'one') out.push(`<div class="sheet one">${await renderPanel(s.pages[0], ctx, false)}${foot}</div>`);
+    else if (s.kind === 'one') out.push(`<div class="sheet one">${bg}${await renderPanel(s.pages[0], ctx, false)}${foot}</div>`);
     else if (s.kind === 'full') {
       // صفحة البسملة بلا حلقات في المنتصف حتى لا تقطع النص
-      const rings = s.pages[0].type === 'opening' ? '' : '<div class="rings"></div>';
-      out.push(`<div class="sheet spread">${await renderPanel(s.pages[0], ctx, true)}${rings}${foot}</div>`);
+      const rings = s.pages[0].type === 'opening' ? '' : ringsEl;
+      out.push(`<div class="sheet spread">${bg}${await renderPanel(s.pages[0], ctx, true)}${rings}${foot}</div>`);
     }
-    else out.push(`<div class="sheet spread">${await renderPanel(s.pages[0], ctx, false)}${await renderPanel(s.pages[1], ctx, false)}<div class="rings"></div>${foot}</div>`);
+    else out.push(`<div class="sheet spread">${bg}${await renderPanel(s.pages[0], ctx, false)}${await renderPanel(s.pages[1], ctx, false)}${ringsEl}${foot}</div>`);
   }
 
   return `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -284,20 +310,16 @@ body.screen{background:#8a8f94;padding:8mm 0}
 body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .sheet{width:${W}mm;height:${H}mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;
   background:${t.frame};
-  background-image:
-    repeating-linear-gradient(45deg,rgba(255,255,255,.13) 0 3mm,transparent 3mm 9mm),
-    repeating-linear-gradient(-45deg,rgba(255,255,255,.09) 0 2mm,transparent 2mm 12mm);
   display:flex;gap:${layout === 'single' ? 0 : 14}mm;padding:9mm 10mm 11mm}
+.sh-bg{position:absolute;inset:0;width:100%;height:100%;display:block}
 .sheet:last-child{page-break-after:auto;break-after:auto}
 .sheet.one{padding:10mm}
-.panel{flex:1;min-width:0;background:${t.panel};border-radius:4mm;box-shadow:0 1.2mm 3mm rgba(0,0,0,.18);padding:7mm 7mm 6mm;display:flex;flex-direction:column;position:relative;
-  background-image:radial-gradient(circle at 100% 0,rgba(255,255,255,.55),transparent 45%)}
+.panel{flex:1;min-width:0;background:${t.panel};border-radius:4mm;box-shadow:0 1mm 0 rgba(0,0,0,.14);padding:7mm 7mm 6mm;display:flex;flex-direction:column;position:relative}
 .panel.empty{background:${t.panel};opacity:.92}
 .rings{position:absolute;top:13mm;bottom:15mm;left:50%;width:16mm;margin-left:-8mm;
-  background:repeating-linear-gradient(180deg,transparent 0 9mm,${t.sand} 9mm 10.4mm,#fff 10.4mm 11mm,${t.sand} 11mm 12.6mm,transparent 12.6mm 21mm);
-  border-radius:3mm;opacity:.95;filter:drop-shadow(0 .6mm .6mm rgba(0,0,0,.25))}
-.rings::before{content:'';position:absolute;top:0;bottom:0;left:50%;width:1.6mm;margin-left:-.8mm;background:linear-gradient(90deg,#b9a68d,#efe4d2,#b9a68d);border-radius:1mm}
-.foot{position:absolute;bottom:3.2mm;left:12mm;right:12mm;display:flex;justify-content:space-between;color:#fff;font-size:2.8mm;font-weight:500;text-shadow:0 .2mm .6mm rgba(0,0,0,.3)}
+  z-index:1}
+.rings svg{width:100%;height:100%;display:block}
+.foot{position:absolute;bottom:3.2mm;left:12mm;right:12mm;display:flex;justify-content:space-between;color:#fff;font-size:2.8mm;font-weight:500}
 
 .ptitle{margin:0 0 4mm;display:flex;justify-content:center}
 .sheet.spread .panel.full .ptitle{width:calc(50% - 11mm)}
@@ -336,14 +358,14 @@ body.screen .sheet{margin:0 auto 8mm;box-shadow:0 4px 24px rgba(0,0,0,.35)}
 .wide2 .imgs.n3{grid-template-columns:repeat(2,1fr)}
 .wide2 .imgs.n3 .img:last-child{grid-column:1 / -1;width:50%;margin:0 auto}
 .img{margin:0;text-align:center}
-.img .ib{width:100%;aspect-ratio:1.15;overflow:hidden;box-shadow:0 .8mm 2mm rgba(0,0,0,.12)}
+.img .ib{width:100%;aspect-ratio:1.15;overflow:hidden;box-shadow:0 .7mm 0 rgba(0,0,0,.1)}
 .imgs.n1 .img .ib{aspect-ratio:1.6;border-radius:4mm!important}
 .img img{width:100%;height:100%;object-fit:cover;display:block}
 /* الصورة المرفوعة تظهر كاملة بدون قص؛ الأشكال الزخرفية للخانات الفارغة فقط */
 /* صور المعرض تأخذ شكل الرسومات (قص زخرفي) والضغط يفتحها كاملة؛ الصورة المفردة تظهر كاملة */
 .img .ib a{display:block;width:100%;height:100%}
 .imgs.n1 .img.has .ib{aspect-ratio:auto;background:transparent;box-shadow:none;overflow:visible;border-radius:0!important}
-.imgs.n1 .img.has img{width:auto;height:auto;max-width:100%;max-height:calc(var(--fit,1) * 125mm);margin:0 auto;border-radius:3mm;box-shadow:0 .8mm 2mm rgba(0,0,0,.1)}
+.imgs.n1 .img.has img{width:auto;height:auto;max-width:100%;max-height:calc(var(--fit,1) * 125mm);margin:0 auto;border-radius:3mm;box-shadow:0 .7mm 0 rgba(0,0,0,.1)}
 .img.t1 .ib{background:${t.panel};background:color-mix(in srgb,${t.frame} 55%,#fff)}
 .img.t2 .ib{background:color-mix(in srgb,${t.sand} 85%,#fff)}
 .img.t3 .ib{background:color-mix(in srgb,${t.frame2} 45%,#fff)}
@@ -357,7 +379,7 @@ figcaption{font-size:.85em;margin-top:1.2mm;font-weight:500}
 
 .links{display:flex;flex-direction:column;gap:2.6mm}
 .lk{display:flex;align-items:center;gap:3mm}
-.pill{flex:1;display:block;text-decoration:none;color:${t.ink};background:rgba(255,255,255,.8);border-inline-start:2.2mm solid ${t.accent2};border-radius:2mm 6mm 6mm 2mm;padding:2mm 4mm;font-weight:700;box-shadow:0 .6mm 1.5mm rgba(0,0,0,.08)}
+.pill{flex:1;display:block;text-decoration:none;color:${t.ink};background:rgba(255,255,255,.8);border-inline-start:2.2mm solid ${t.accent2};border-radius:2mm 6mm 6mm 2mm;padding:2mm 4mm;font-weight:700;box-shadow:0 .5mm 0 rgba(0,0,0,.07)}
 .pill .cnt{font-size:.78em;font-weight:500;color:${t.accent2};margin-inline-start:1.5mm}
 a.pill::after{content:' ⟵';color:${t.accent2}}
 .qr{display:block;width:17mm;height:17mm;background:#fff;padding:1.2mm;border-radius:1.5mm;flex:none}
@@ -373,7 +395,7 @@ a.pill::after{content:' ⟵';color:${t.accent2}}
 .tocgrid{column-gap:22mm}
 .panel:not(.full) .tocgrid{display:block}
 .toc{display:flex;flex-direction:column;gap:2.4mm}
-.tpill{display:flex;justify-content:space-between;align-items:center;text-decoration:none;color:#fff;background:${t.accent};padding:1.8mm 6mm 1.4mm;border-radius:6mm;font-weight:700;box-shadow:0 .6mm 1.5mm rgba(0,0,0,.12)}
+.tpill{display:flex;justify-content:space-between;align-items:center;text-decoration:none;color:#fff;background:${t.accent};padding:1.8mm 6mm 1.4mm;border-radius:6mm;font-weight:700;box-shadow:0 .5mm 0 rgba(0,0,0,.12)}
 .tpill.alt{background:${t.accent2}}
 .tpill b{background:rgba(255,255,255,.9);color:${t.ink};border-radius:3mm;min-width:7mm;text-align:center;font-size:.9em}
 
@@ -386,7 +408,7 @@ a.pill::after{content:' ⟵';color:${t.accent2}}
 .sheet.cover{align-items:center;justify-content:center;background:${t.frame}}
 .cv-bg{position:absolute;inset:0;width:100%;height:100%}
 .cover-card,.back-mark{position:relative}
-.cover-card{background:rgba(255,255,255,.93);border-radius:8mm;padding:14mm 22mm;text-align:center;min-width:55%;box-shadow:0 2mm 8mm rgba(0,0,0,.2);border:1.2mm solid ${t.sand}}
+.cover-card{background:rgba(255,255,255,.93);border-radius:8mm;padding:14mm 22mm;text-align:center;min-width:55%;box-shadow:0 1.5mm 0 rgba(0,0,0,.15);border:1.2mm solid ${t.sand}}
 .cv-t{font-size:16mm;font-weight:800;color:${t.accent};line-height:1.3}
 .cv-n{font-size:9mm;font-weight:700;color:${t.accent2};margin-top:2mm}
 .cv-m{margin-top:7mm;display:flex;flex-direction:column;gap:1.5mm;font-size:4.4mm}
