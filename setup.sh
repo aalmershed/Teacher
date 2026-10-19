@@ -71,7 +71,8 @@ if command -v iptables >/dev/null 2>&1 && sudo iptables -S INPUT 2>/dev/null | g
 fi
 
 say "تشغيل الموقع (أول مرة تأخذ 3–5 دقائق)..."
-sudo docker compose up -d --build
+export APP_VERSION="$(git log -1 --format='%h|%cI' 2>/dev/null || true)"
+sudo -E docker compose up -d --build
 
 # التحديث التلقائي: كل 5 دقائق يتحقق من GitHub ويحدّث الموقع إن وُجد جديد
 if [ "${NO_AUTO_UPDATE:-}" != "1" ]; then

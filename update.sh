@@ -4,5 +4,6 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 git pull
-sudo docker compose up -d --build
+export APP_VERSION="$(git log -1 --format='%h|%cI' 2>/dev/null || true)"
+sudo -E docker compose up -d --build
 echo "تم التحديث."

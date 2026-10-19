@@ -8,6 +8,7 @@ services:
     env_file: .env
     environment:
       TRUST_PROXY: "1"
+      APP_VERSION: ${APP_VERSION:-}   # يُضبط تلقائيًا من سكربتات التثبيت والتحديث
     volumes:
       - ./data:/app/data          # قاعدة البيانات والصور وملفات الشواهد — انسخها احتياطيًا
 

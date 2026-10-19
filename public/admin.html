@@ -56,6 +56,8 @@ details.tbl table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.
 details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--line);text-align:right}
 .settings{max-width:460px;padding:20px}
 .empty{padding:30px;text-align:center;color:var(--muted)}
+.version{margin-top:22px;padding:14px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.9em}
+.version code{background:var(--bg);padding:.15em .5em;border-radius:6px;direction:ltr}
 @media (max-width:600px){.kpi b{font-size:1.5em}}
 </style>
 </head>
@@ -105,6 +107,8 @@ details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--l
       <button class="btn primary" id="saveSettings">حفظ الأسعار</button>
     </div>
   </section>
+
+  <div class="card version" id="version"><span class="muted">جارٍ التحقق من إصدار الموقع...</span></div>
 </main>
 
 <div class="modal-bg" id="mgrModal">
@@ -361,6 +365,28 @@ async function loadSettings() {
 }
 $('saveSettings').onclick = () => act(() => api('PUT', '/api/admin/settings', { priceMonthly: $('pMonthly').value, priceYearly: $('pYearly').value }), 'تم حفظ الأسعار');
 
+// ---------- إصدار الموقع: هل وصل آخر تحديث من GitHub؟ ----------
+async function loadVersion() {
+  const box = $('version');
+  const v = await api('GET', '/api/admin/version');
+  const when = (d) => new Date(d).toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' });
+  let latest = null;
+  try {
+    const r = await fetch('https://api.github.com/repos/aalmershed/Teacher/commits/main', { headers: { Accept: 'application/vnd.github+json' } });
+    if (r.ok) { const j = await r.json(); latest = { commit: j.sha.slice(0, 7), date: j.commit.committer.date }; }
+  } catch (_) { /* GitHub غير متاح */ }
+  const mine = v.commit ? `الإصدار الحالي <code>${esc(v.commit)}</code> (${when(v.date)})` : 'الإصدار الحالي غير معروف';
+  let state = '';
+  if (latest && v.commit) {
+    state = latest.commit.startsWith(v.commit) || v.commit.startsWith(latest.commit)
+      ? '<span class="badge">✓ الموقع محدّث بآخر نسخة</span>'
+      : `<span class="badge warn">⏳ يوجد تحديث أحدث <code>${esc(latest.commit)}</code> — يصل تلقائيًا خلال 5 دقائق</span>`;
+  } else if (!v.commit) {
+    state = '<span class="muted">سيظهر رقم الإصدار بعد أول تحديث تلقائي.</span>';
+  }
+  box.innerHTML = `${state}<span class="muted">${mine} · آخر تشغيل للموقع: ${when(v.startedAt)}</span>`;
+}
+
 // ---------- التبويبات ----------
 const loaders = { users: () => loadUsers(), payments: loadPayments, stats: loadStats, settings: loadSettings };
 document.querySelector('.tabs').addEventListener('click', (e) => {
@@ -375,6 +401,7 @@ document.querySelector('.tabs').addEventListener('click', (e) => {
     me = (await api('GET', '/api/me')).user;
     if (!me.isAdmin) throw Object.assign(new Error('غير مصرح'), { status: 403 });
     await Promise.all([loadSummary(), loadUsers()]);
+    loadVersion().catch(() => { $('version').hidden = true; });
   } catch (e) {
     if (e.status === 401) location.href = '/login?next=/admin';
     else document.querySelector('main').innerHTML = `<div class="empty-state"><p>${esc(e.message)}</p></div>`;

@@ -542,6 +542,13 @@ app.get('/api/admin/stats', requireAdmin, (req, res) => {
   res.json({ range: months ? 'months' : 'days', points: keys.map((k) => ({ key: k, registrations: reg[k] || 0, subscriptions: subs[k] || 0, revenue: rev[k] || 0 })) });
 });
 
+// إصدار الموقع الحالي (رقم آخر تعديل من GitHub) — للتأكد من وصول التحديثات
+const STARTED_AT = Date.now();
+app.get('/api/admin/version', requireAdmin, (_req, res) => {
+  const [commit, date] = String(process.env.APP_VERSION || '').split('|');
+  res.json({ commit: commit || null, date: date || null, startedAt: STARTED_AT });
+});
+
 // إعدادات الموقع (الأسعار)
 app.get('/api/admin/settings', requireAdmin, (_req, res) => {
   const p = payments.getPlans();

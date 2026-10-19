@@ -18,6 +18,7 @@ REMOTE=$(as_owner git rev-parse "origin/$BRANCH")
 
 echo "$(date '+%F %T') تحديث ${LOCAL:0:7} → ${REMOTE:0:7}"
 as_owner git pull -q --ff-only origin "$BRANCH"
+export APP_VERSION="$(as_owner git log -1 --format='%h|%cI')"
 if [ "${SKIP_DOCKER:-}" != "1" ]; then
   docker compose up -d --build --remove-orphans
   docker image prune -f >/dev/null 2>&1 || true
