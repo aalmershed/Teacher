@@ -147,7 +147,10 @@ async function confirmMoyasarPayment(moyasarId) {
   const res = await fetch(`${MOYASAR.apiBase}/v1/payments/${encodeURIComponent(moyasarId)}`, {
     headers: { Authorization: 'Basic ' + Buffer.from(MOYASAR.secretKey + ':').toString('base64') },
   });
-  if (!res.ok) return { ok: false, reason: 'تعذر التحقق من عملية الدفع' };
+  if (!res.ok) {
+    console.warn(`moyasar verify ${moyasarId}: HTTP ${res.status}${res.status === 401 ? ' (المفتاح السري MOYASAR_SECRET_KEY غير صحيح)' : ''}`);
+    return { ok: false, reason: 'تعذر التحقق من عملية الدفع، تواصل معنا إن خُصم المبلغ' };
+  }
   const p = await res.json();
   const row = p.metadata && p.metadata.ref ? db.prepare('SELECT * FROM payments WHERE token = ?').get(String(p.metadata.ref)) : null;
   if (!row) return { ok: false, reason: 'عملية دفع غير معروفة' };

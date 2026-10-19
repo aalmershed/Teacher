@@ -27,6 +27,15 @@ if (process.env.TRUST_PROXY) app.set('trust proxy', true);
 
 // الرابط الأساسي للموقع — يُستخدم في روابط الملفات ورموز QR
 const baseUrl = (req) => PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
+
+// توحيد الدومين: أي زيارة من www أو الرابط القديم تتحول للدومين الأساسي حتى تبقى جلسة الدخول واحدة
+// (مهم للرجوع من بوابة الدفع: الكوكيز مرتبطة بالدومين)
+const CANONICAL_HOST = PUBLIC_URL ? new URL(PUBLIC_URL).host : '';
+app.use((req, res, next) => {
+  const host = req.get('host') || '';
+  if (!CANONICAL_HOST || host === CANONICAL_HOST || !['GET', 'HEAD'].includes(req.method) || /^(localhost|127\.0\.0\.1|app)(:\d+)?$/.test(host)) return next();
+  res.redirect(301, PUBLIC_URL + req.originalUrl);
+});
 app.use(express.json({ limit: '3mb' }));
 app.use(cookieParser());
 
@@ -134,6 +143,7 @@ app.get('/payments/moyasar/callback', async (req, res) => {
   try {
     const r = await payments.confirmMoyasarPayment(req.query.id);
     if (r.ok) return res.redirect('/subscribe?pay=success');
+    console.warn('moyasar callback failed', req.query.id, r.reason);
     res.redirect('/subscribe?pay=failed&msg=' + encodeURIComponent(r.reason || String(req.query.message || '')));
   } catch (e) {
     console.error('moyasar callback', e);

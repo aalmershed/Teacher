@@ -40,7 +40,7 @@ async function currentUser({ redirect = true } = {}) {
   try {
     return (await api('GET', '/api/me')).user;
   } catch (e) {
-    if (redirect && e.status === 401) location.href = '/login?next=' + encodeURIComponent(location.pathname);
+    if (redirect && e.status === 401) location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
     return null;
   }
 }
