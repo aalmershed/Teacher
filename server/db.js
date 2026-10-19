@@ -95,6 +95,8 @@ db.exec(`
 // ترقيات قاعدة البيانات للنسخ السابقة
 const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
 if (!cols('payments').includes('token')) db.exec('ALTER TABLE payments ADD COLUMN token TEXT');
+if (!cols('users').includes('suspended')) db.exec('ALTER TABLE users ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0');
+db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_token ON payments(token)');
 
 module.exports = { db, DATA_DIR };

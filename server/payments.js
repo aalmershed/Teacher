@@ -5,10 +5,17 @@ const { db } = require('./db');
 
 const DAY = 24 * 60 * 60 * 1000;
 
-const PLANS = {
-  monthly: { id: 'monthly', name: 'اشتراك شهري', price: Number(process.env.PRICE_MONTHLY || 29), days: 30 },
-  yearly: { id: 'yearly', name: 'اشتراك سنوي', price: Number(process.env.PRICE_YEARLY || 199), days: 365 },
-};
+// إعدادات تُعدّل من لوحة الإدارة (مثل الأسعار)، والقيمة الافتراضية من متغيرات البيئة
+const getSetting = (key) => { const r = db.prepare('SELECT value FROM settings WHERE key = ?').get(key); return r ? r.value : null; };
+const setSetting = (key, value) => db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(key, String(value));
+
+function getPlans() {
+  const price = (key, env, def) => Number(getSetting(key) ?? process.env[env] ?? def);
+  return {
+    monthly: { id: 'monthly', name: 'اشتراك شهري', price: price('price_monthly', 'PRICE_MONTHLY', 29), days: 30 },
+    yearly: { id: 'yearly', name: 'اشتراك سنوي', price: price('price_yearly', 'PRICE_YEARLY', 199), days: 365 },
+  };
+}
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 0);
 const PROVIDER = process.env.PAYMENT_PROVIDER || 'mock';
 
@@ -24,7 +31,9 @@ if (PROVIDER === 'moyasar' && (!MOYASAR.publishableKey || !MOYASAR.secretKey)) {
 }
 
 function currentSubscription(userId) {
-  return db.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY current_period_end DESC LIMIT 1').get(userId) || null;
+  // الاشتراك الفعال أولًا (حتى لو كان لاشتراك ملغى تاريخ أبعد)، ثم الأحدث انتهاءً
+  return db.prepare(`SELECT * FROM subscriptions WHERE user_id = ?
+    ORDER BY (status IN ('active','trialing') AND current_period_end > ?) DESC, current_period_end DESC LIMIT 1`).get(userId, Date.now()) || null;
 }
 
 function isActive(sub) {
@@ -38,7 +47,7 @@ function startTrial(userId) {
 }
 
 function activate(userId, planId, provider, ref) {
-  const plan = PLANS[planId];
+  const plan = getPlans()[planId];
   const sub = currentSubscription(userId);
   // يُضاف الوقت المتبقي من الاشتراك الحالي المدفوع (وليس التجربة)
   const base = sub && sub.status === 'active' && sub.current_period_end > Date.now() ? sub.current_period_end : Date.now();
@@ -48,7 +57,7 @@ function activate(userId, planId, provider, ref) {
 
 // يجهّز الدفع: يفعّل مباشرة في الوضع التجريبي، أو يُرجع إعدادات نموذج ميسر
 function createCheckout(userId, planId, baseUrl) {
-  const plan = PLANS[planId];
+  const plan = getPlans()[planId];
   if (!plan) throw new Error('خطة غير معروفة');
   // التفعيل اليدوي: المدير يفعّل الاشتراك من لوحة الإدارة بعد استلام المبلغ
   if (PROVIDER === 'manual') throw new Error('التفعيل حاليًا يتم يدويًا. تواصل معنا لإتمام الدفع وسيُفعّل اشتراكك مباشرة.');
@@ -117,4 +126,27 @@ function subscriptionInfo(userId) {
   };
 }
 
-module.exports = { PLANS, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };
+// إلغاء الاشتراك الحالي (المدير)
+function cancelSubscription(userId) {
+  db.prepare("UPDATE subscriptions SET status = 'canceled' WHERE user_id = ? AND status IN ('active','trialing')").run(userId);
+}
+
+// تحديد تاريخ انتهاء الاشتراك يدويًا (المدير): يحل محل الاشتراك الحالي
+function setSubscriptionEnd(userId, endsAt, planId) {
+  const sub = currentSubscription(userId);
+  const plan = getPlans()[planId] ? planId : (sub && getPlans()[sub.plan] ? sub.plan : 'monthly');
+  cancelSubscription(userId);
+  db.prepare('INSERT INTO subscriptions (user_id, plan, status, current_period_end, provider, provider_ref) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(userId, plan, 'active', endsAt, 'admin', 'set-end');
+}
+
+// تسجيل دفعة استلمها المدير يدويًا (تحويل بنكي مثلًا)
+function recordManualPayment(userId, planId, adminId) {
+  const plan = getPlans()[planId];
+  const ref = `manual-${adminId}-${Date.now()}`;
+  db.prepare("INSERT INTO payments (user_id, plan, amount, status, provider, provider_ref, token) VALUES (?, ?, ?, 'paid', 'manual', ?, ?)")
+    .run(userId, planId, Math.round(plan.price * 100), ref, crypto.randomBytes(16).toString('hex'));
+  return ref;
+}
+
+module.exports = { getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };

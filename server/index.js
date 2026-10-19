@@ -41,8 +41,8 @@ function createSession(res, userId) {
 app.use((req, _res, next) => {
   const token = req.cookies.sid;
   if (token) {
-    const row = db.prepare('SELECT u.id, u.name, u.email, u.phone, u.is_admin, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?').get(token);
-    if (row && row.expires_at > Date.now()) req.user = row;
+    const row = db.prepare('SELECT u.id, u.name, u.email, u.phone, u.is_admin, u.suspended, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?').get(token);
+    if (row && row.expires_at > Date.now() && !row.suspended) req.user = row;
   }
   next();
 });
@@ -83,6 +83,7 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !bcrypt.compareSync(String(req.body.password || ''), user.password_hash)) {
     return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
   }
+  if (user.suspended) return res.status(403).json({ error: 'هذا الحساب موقوف. تواصل مع الدعم.' });
   createSession(res, user.id);
   res.json({ user: publicUser(user) });
 });
@@ -109,7 +110,7 @@ app.put('/api/me', requireAuth, (req, res) => {
 });
 
 // ---------- الاشتراكات ----------
-app.get('/api/plans', (_req, res) => res.json({ plans: Object.values(payments.PLANS), trialDays: payments.TRIAL_DAYS, currency: 'ر.س' }));
+app.get('/api/plans', (_req, res) => res.json({ plans: Object.values(payments.getPlans()), trialDays: payments.TRIAL_DAYS, currency: 'ر.س' }));
 
 app.post('/api/subscribe', requireAuth, (req, res) => {
   try {
@@ -419,24 +420,139 @@ app.get('/api/qr', async (req, res) => {
 app.get('/api/themes', (_req, res) => res.json({ themes: Object.entries(THEMES).map(([id, t]) => ({ id, name: t.name, colors: [t.frame, t.accent, t.accent2, t.panel] })) }));
 
 // ---------- لوحة الإدارة ----------
-app.get('/api/admin/users', requireAdmin, (_req, res) => {
-  const users = db.prepare(`SELECT u.id, u.name, u.email, u.phone, u.created_at,
-      (SELECT COUNT(*) FROM projects p WHERE p.user_id = u.id) AS projects FROM users u ORDER BY u.id DESC`).all()
+const targetUser = (req, res) => {
+  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(Number(req.params.id));
+  if (!u) { res.status(404).json({ error: 'المستخدم غير موجود' }); return null; }
+  return u;
+};
+const notSelf = (req, res, u) => {
+  if (u.id === req.user.id) { res.status(400).json({ error: 'لا يمكن تنفيذ هذا الإجراء على حسابك أنت' }); return false; }
+  return true;
+};
+
+// قائمة المعلمين مع البحث بالاسم أو البريد أو الجوال
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const q = str(req.query.q, 100).trim();
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
+  const offset = Math.max(0, Number(req.query.offset) || 0);
+  const where = q ? 'WHERE u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ?' : '';
+  const args = q ? [`%${q}%`, `%${q}%`, `%${q}%`] : [];
+  const total = db.prepare(`SELECT COUNT(*) AS n FROM users u ${where}`).get(...args).n;
+  const users = db.prepare(`SELECT u.id, u.name, u.email, u.phone, u.created_at, u.is_admin, u.suspended,
+      (SELECT COUNT(*) FROM projects p WHERE p.user_id = u.id) AS projects FROM users u ${where} ORDER BY u.id DESC LIMIT ? OFFSET ?`).all(...args, limit, offset)
     .map((u) => ({ ...u, subscription: payments.subscriptionInfo(u.id) }));
-  const paid = db.prepare("SELECT COALESCE(SUM(amount),0) AS total FROM payments WHERE status = 'paid'").get().total;
-  res.json({ users, stats: { users: users.length, active: users.filter((u) => u.subscription.active).length, revenue: paid / 100 } });
+  res.json({ users, total });
+});
+
+app.get('/api/admin/summary', requireAdmin, (_req, res) => {
+  const users = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 0').get().n;
+  const active = db.prepare("SELECT COUNT(DISTINCT user_id) AS n FROM subscriptions WHERE status IN ('active','trialing') AND current_period_end > ?").get(Date.now()).n;
+  const revenue = db.prepare("SELECT COALESCE(SUM(amount),0) AS t FROM payments WHERE status = 'paid'").get().t / 100;
+  const month = new Date().toISOString().slice(0, 7);
+  const newThisMonth = db.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 0 AND substr(created_at,1,7) = ?').get(month).n;
+  const revenueThisMonth = db.prepare("SELECT COALESCE(SUM(amount),0) AS t FROM payments WHERE status = 'paid' AND substr(created_at,1,7) = ?").get(month).t / 100;
+  res.json({ users, active, revenue, newThisMonth, revenueThisMonth });
 });
 
 app.put('/api/admin/users/:id/name', requireAdmin, (req, res) => {
-  const name = String(req.body.name || '').trim();
+  const u = targetUser(req, res); if (!u) return;
+  const name = str(req.body.name, 100).trim();
   if (name.length < 2) return res.status(400).json({ error: 'الاسم مطلوب' });
-  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, Number(req.params.id));
+  db.prepare('UPDATE users SET name = ? WHERE id = ?').run(name, u.id);
   res.json({ ok: true });
 });
 
+// إضافة مدة اشتراك (+ تسجيلها كدفعة مستلمة اختياريًا)
 app.post('/api/admin/users/:id/grant', requireAdmin, (req, res) => {
-  const plan = payments.PLANS[req.body.plan] ? req.body.plan : 'monthly';
-  payments.activate(Number(req.params.id), plan, 'admin', 'by-' + req.user.id);
+  const u = targetUser(req, res); if (!u) return;
+  const plan = payments.getPlans()[req.body.plan] ? req.body.plan : 'monthly';
+  const ref = req.body.record ? payments.recordManualPayment(u.id, plan, req.user.id) : 'by-' + req.user.id;
+  payments.activate(u.id, plan, 'admin', ref);
+  res.json({ ok: true, subscription: payments.subscriptionInfo(u.id) });
+});
+
+// إلغاء الاشتراك أو تحديد تاريخ انتهائه
+app.post('/api/admin/users/:id/subscription', requireAdmin, (req, res) => {
+  const u = targetUser(req, res); if (!u) return;
+  if (req.body.action === 'cancel') {
+    payments.cancelSubscription(u.id);
+  } else if (req.body.action === 'set') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(req.body.endsAt || ''));
+    const end = m ? Date.UTC(+m[1], +m[2] - 1, +m[3], 23, 59, 59) : NaN;
+    if (!m || Number.isNaN(end) || end <= Date.now()) return res.status(400).json({ error: 'اختر تاريخًا صحيحًا في المستقبل' });
+    payments.setSubscriptionEnd(u.id, end, req.body.plan);
+  } else {
+    return res.status(400).json({ error: 'إجراء غير معروف' });
+  }
+  res.json({ ok: true, subscription: payments.subscriptionInfo(u.id) });
+});
+
+// إعادة تعيين كلمة المرور: تُنشأ كلمة جديدة وتظهر للمدير مرة واحدة، وتُسجَّل خروج المعلم من كل الأجهزة
+app.post('/api/admin/users/:id/password', requireAdmin, (req, res) => {
+  const u = targetUser(req, res); if (!u) return;
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const password = Array.from(crypto.randomBytes(10), (b) => alphabet[b % alphabet.length]).join('');
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(password, 10), u.id);
+  db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
+  res.json({ password });
+});
+
+// إيقاف الحساب أو إعادة تفعيله
+app.post('/api/admin/users/:id/suspend', requireAdmin, (req, res) => {
+  const u = targetUser(req, res); if (!u || !notSelf(req, res, u)) return;
+  const suspended = req.body.suspended ? 1 : 0;
+  db.prepare('UPDATE users SET suspended = ? WHERE id = ?').run(suspended, u.id);
+  if (suspended) db.prepare('DELETE FROM sessions WHERE user_id = ?').run(u.id);
+  res.json({ ok: true, suspended: !!suspended });
+});
+
+// حذف الحساب نهائيًا مع ملفاته وصوره وشواهده
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+  const u = targetUser(req, res); if (!u || !notSelf(req, res, u)) return;
+  if (String(req.body.confirm || '').trim().toLowerCase() !== u.email) return res.status(400).json({ error: 'اكتب بريد المعلم للتأكيد' });
+  for (const r of db.prepare('SELECT id FROM uploads WHERE user_id = ?').all(u.id)) fs.unlink(path.join(DATA_DIR, 'uploads', r.id), () => {});
+  for (const r of db.prepare('SELECT id FROM files WHERE user_id = ?').all(u.id)) fs.unlink(path.join(DATA_DIR, 'files', r.id), () => {});
+  db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+  res.json({ ok: true });
+});
+
+// سجل المدفوعات
+app.get('/api/admin/payments', requireAdmin, (req, res) => {
+  const status = ['paid', 'pending'].includes(req.query.status) ? req.query.status : null;
+  const rows = db.prepare(`SELECT p.id, p.plan, p.amount, p.status, p.provider, p.provider_ref, p.created_at, u.name, u.email
+      FROM payments p JOIN users u ON u.id = p.user_id ${status ? 'WHERE p.status = ?' : ''} ORDER BY p.id DESC LIMIT 300`).all(...(status ? [status] : []));
+  res.json({ payments: rows.map((r) => ({ ...r, amount: r.amount / 100 })) });
+});
+
+// إحصائيات للرسوم البيانية: آخر 30 يومًا أو آخر 12 شهرًا
+app.get('/api/admin/stats', requireAdmin, (req, res) => {
+  const months = req.query.range === 'months';
+  const keyLen = months ? 7 : 10;
+  const keys = [];
+  const now = new Date();
+  for (let i = months ? 11 : 29; i >= 0; i--) {
+    const d = months ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)) : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - i));
+    keys.push(d.toISOString().slice(0, keyLen));
+  }
+  const since = months ? keys[0] + '-01' : keys[0];
+  const group = (sql) => Object.fromEntries(db.prepare(sql).all(since).map((r) => [r.k, r.v]));
+  const reg = group(`SELECT substr(created_at,1,${keyLen}) AS k, COUNT(*) AS v FROM users WHERE created_at >= ? GROUP BY k`);
+  const subs = group(`SELECT substr(created_at,1,${keyLen}) AS k, COUNT(*) AS v FROM subscriptions WHERE plan != 'trial' AND provider_ref IS NOT 'set-end' AND created_at >= ? GROUP BY k`);
+  const rev = group(`SELECT substr(created_at,1,${keyLen}) AS k, SUM(amount) / 100.0 AS v FROM payments WHERE status = 'paid' AND created_at >= ? GROUP BY k`);
+  res.json({ range: months ? 'months' : 'days', points: keys.map((k) => ({ key: k, registrations: reg[k] || 0, subscriptions: subs[k] || 0, revenue: rev[k] || 0 })) });
+});
+
+// إعدادات الموقع (الأسعار)
+app.get('/api/admin/settings', requireAdmin, (_req, res) => {
+  const p = payments.getPlans();
+  res.json({ priceMonthly: p.monthly.price, priceYearly: p.yearly.price });
+});
+app.put('/api/admin/settings', requireAdmin, (req, res) => {
+  const m = Number(req.body.priceMonthly), y = Number(req.body.priceYearly);
+  const ok = (v) => Number.isFinite(v) && v >= 1 && v <= 10000;
+  if (!ok(m) || !ok(y)) return res.status(400).json({ error: 'الأسعار يجب أن تكون بين 1 و10000 ريال' });
+  payments.setSetting('price_monthly', Math.round(m * 100) / 100);
+  payments.setSetting('price_yearly', Math.round(y * 100) / 100);
   res.json({ ok: true });
 });
 
