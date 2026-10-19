@@ -92,4 +92,9 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
 `);
 
+// ترقيات قاعدة البيانات للنسخ السابقة
+const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.name);
+if (!cols('payments').includes('token')) db.exec('ALTER TABLE payments ADD COLUMN token TEXT');
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_token ON payments(token)');
+
 module.exports = { db, DATA_DIR };

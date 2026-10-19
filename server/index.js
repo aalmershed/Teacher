@@ -113,10 +113,38 @@ app.get('/api/plans', (_req, res) => res.json({ plans: Object.values(payments.PL
 
 app.post('/api/subscribe', requireAuth, (req, res) => {
   try {
-    const result = payments.createCheckout(req.user.id, String(req.body.plan));
+    const result = payments.createCheckout(req.user.id, String(req.body.plan), baseUrl(req));
     res.json({ ...result, subscription: payments.subscriptionInfo(req.user.id) });
   } catch (e) {
     res.status(400).json({ error: e.message });
+  }
+});
+
+// ---------- ميسر ----------
+// بعد الدفع يعيد ميسر المستخدم إلى هنا؛ نتحقق من العملية من خادم ميسر قبل التفعيل
+app.get('/payments/moyasar/callback', async (req, res) => {
+  try {
+    const r = await payments.confirmMoyasarPayment(req.query.id);
+    if (r.ok) return res.redirect('/subscribe?pay=success');
+    res.redirect('/subscribe?pay=failed&msg=' + encodeURIComponent(r.reason || String(req.query.message || '')));
+  } catch (e) {
+    console.error('moyasar callback', e);
+    res.redirect('/subscribe?pay=failed&msg=' + encodeURIComponent('تعذر التحقق من عملية الدفع، تواصل معنا إن خُصم المبلغ'));
+  }
+});
+
+// إشعار ميسر (Webhook): يضمن التفعيل حتى لو أغلق المستخدم الصفحة قبل الرجوع للموقع
+app.post('/payments/moyasar/webhook', async (req, res) => {
+  const secret = process.env.MOYASAR_WEBHOOK_SECRET;
+  const given = String((req.body && req.body.secret_token) || '');
+  const valid = secret && given.length === secret.length && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(secret));
+  if (!valid) return res.status(401).end();
+  try {
+    if (req.body.type === 'payment_paid' && req.body.data && req.body.data.id) await payments.confirmMoyasarPayment(req.body.data.id);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('moyasar webhook', e);
+    res.status(500).end();
   }
 });
 
@@ -413,6 +441,7 @@ app.post('/api/admin/users/:id/grant', requireAdmin, (req, res) => {
 });
 
 // ---------- الصفحات ----------
+app.use('/vendor/moyasar', express.static(path.join(__dirname, '..', 'node_modules', 'moyasar-payment-form', 'dist'), { maxAge: '7d' }));
 app.use('/fonts', express.static(path.join(__dirname, '..', 'node_modules', '@fontsource'), { maxAge: '30d' }));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
 const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
