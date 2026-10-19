@@ -114,11 +114,18 @@ app.get('/api/plans', (_req, res) => res.json({ plans: Object.values(payments.ge
 
 app.post('/api/subscribe', requireAuth, (req, res) => {
   try {
-    const result = payments.createCheckout(req.user.id, String(req.body.plan), baseUrl(req));
+    const result = payments.createCheckout(req.user.id, String(req.body.plan), baseUrl(req), req.body.coupon);
     res.json({ ...result, subscription: payments.subscriptionInfo(req.user.id) });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }
+});
+
+// التحقق من كود خصم قبل الدفع (يعرض السعر بعد الخصم لكل خطة)
+app.post('/api/coupons/check', requireAuth, (req, res) => {
+  const ev = payments.evaluateCoupon(req.body.code, req.user.id);
+  if (!ev.ok) return res.status(400).json({ error: ev.error });
+  res.json({ code: ev.coupon.code, label: ev.label, prices: ev.prices });
 });
 
 // ---------- ميسر ----------
@@ -519,8 +526,9 @@ app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
 // سجل المدفوعات
 app.get('/api/admin/payments', requireAdmin, (req, res) => {
   const status = ['paid', 'pending'].includes(req.query.status) ? req.query.status : null;
-  const rows = db.prepare(`SELECT p.id, p.plan, p.amount, p.status, p.provider, p.provider_ref, p.created_at, u.name, u.email
-      FROM payments p JOIN users u ON u.id = p.user_id ${status ? 'WHERE p.status = ?' : ''} ORDER BY p.id DESC LIMIT 300`).all(...(status ? [status] : []));
+  const rows = db.prepare(`SELECT p.id, p.plan, p.amount, p.status, p.provider, p.provider_ref, p.created_at, u.name, u.email, c.code AS coupon
+      FROM payments p JOIN users u ON u.id = p.user_id LEFT JOIN coupons c ON c.id = p.coupon_id
+      ${status ? 'WHERE p.status = ?' : ''} ORDER BY p.id DESC LIMIT 300`).all(...(status ? [status] : []));
   res.json({ payments: rows.map((r) => ({ ...r, amount: r.amount / 100 })) });
 });
 
@@ -547,6 +555,42 @@ const STARTED_AT = Date.now();
 app.get('/api/admin/version', requireAdmin, (_req, res) => {
   const [commit, date] = String(process.env.APP_VERSION || '').split('|');
   res.json({ commit: commit || null, date: date || null, startedAt: STARTED_AT });
+});
+
+// أكواد الخصم
+const couponView = (c) => ({ ...c, active: !!c.active, uses: payments.couponUses(c.id) });
+app.get('/api/admin/coupons', requireAdmin, (_req, res) => {
+  res.json({ coupons: db.prepare('SELECT * FROM coupons ORDER BY id DESC').all().map(couponView) });
+});
+app.post('/api/admin/coupons', requireAdmin, (req, res) => {
+  const code = payments.normCode(req.body.code);
+  const type = req.body.type === 'amount' ? 'amount' : 'percent';
+  const value = Number(req.body.value);
+  const plans = ['monthly', 'yearly'].includes(req.body.plans) ? req.body.plans : 'all';
+  const maxUses = req.body.maxUses === '' || req.body.maxUses == null ? null : Math.floor(Number(req.body.maxUses));
+  let expiresAt = null;
+  if (req.body.expiresAt) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(req.body.expiresAt));
+    if (!m) return res.status(400).json({ error: 'تاريخ الانتهاء غير صحيح' });
+    expiresAt = Date.UTC(+m[1], +m[2] - 1, +m[3], 20, 59, 59); // نهاية اليوم بتوقيت السعودية
+  }
+  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return res.status(400).json({ error: 'الكود من 3 إلى 30 حرفًا إنجليزيًا أو رقمًا (بدون مسافات)' });
+  if (!Number.isFinite(value) || value <= 0 || (type === 'percent' && value > 100) || (type === 'amount' && value > 10000)) {
+    return res.status(400).json({ error: type === 'percent' ? 'نسبة الخصم بين 1 و100' : 'مبلغ الخصم غير صحيح' });
+  }
+  if (maxUses != null && (!Number.isFinite(maxUses) || maxUses < 1)) return res.status(400).json({ error: 'عدد مرات الاستخدام غير صحيح' });
+  if (db.prepare('SELECT 1 FROM coupons WHERE code = ?').get(code)) return res.status(409).json({ error: 'هذا الكود موجود مسبقًا' });
+  const info = db.prepare('INSERT INTO coupons (code, type, value, plans, max_uses, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(code, type, value, plans, maxUses, expiresAt);
+  res.json({ coupon: couponView(db.prepare('SELECT * FROM coupons WHERE id = ?').get(Number(info.lastInsertRowid))) });
+});
+app.put('/api/admin/coupons/:id', requireAdmin, (req, res) => {
+  const r = db.prepare('UPDATE coupons SET active = ? WHERE id = ?').run(req.body.active ? 1 : 0, Number(req.params.id));
+  if (!r.changes) return res.status(404).json({ error: 'الكود غير موجود' });
+  res.json({ ok: true });
+});
+app.delete('/api/admin/coupons/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM coupons WHERE id = ?').run(Number(req.params.id));
+  res.json({ ok: true });
 });
 
 // إعدادات الموقع (الأسعار)

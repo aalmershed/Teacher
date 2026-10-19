@@ -56,6 +56,8 @@ details.tbl table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.
 details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--line);text-align:right}
 .settings{max-width:460px;padding:20px}
 .empty{padding:30px;text-align:center;color:var(--muted)}
+.cform{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 14px}
+.code{font-family:monospace;font-weight:700;direction:ltr;display:inline-block;background:var(--bg);padding:.1em .5em;border-radius:6px}
 .version{margin-top:22px;padding:14px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.9em}
 .version code{background:var(--bg);padding:.15em .5em;border-radius:6px;direction:ltr}
 @media (max-width:600px){.kpi b{font-size:1.5em}}
@@ -69,6 +71,7 @@ details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--l
   <div class="tabs" role="tablist">
     <button class="on" data-tab="users">المعلمون</button>
     <button data-tab="payments">المدفوعات</button>
+    <button data-tab="coupons">أكواد الخصم</button>
     <button data-tab="stats">الإحصائيات</button>
     <button data-tab="settings">الإعدادات</button>
   </div>
@@ -90,6 +93,25 @@ details.tbl td,details.tbl th{padding:.35em .6em;border-bottom:1px solid var(--l
     </div>
     <div class="card tw">
       <table class="grid"><thead><tr><th>التاريخ</th><th>المعلم</th><th>الخطة</th><th>المبلغ</th><th>الطريقة</th><th>الحالة</th><th>المرجع</th></tr></thead><tbody id="payRows"></tbody></table>
+    </div>
+  </section>
+
+  <section class="panel" id="tab-coupons">
+    <div class="card" style="padding:18px;margin-bottom:14px">
+      <h3 style="margin-top:0">كود خصم جديد</h3>
+      <div class="cform">
+        <div class="field"><label for="cCode">الكود</label><div class="row"><input class="input" id="cCode" dir="ltr" placeholder="TEACHER20" maxlength="30"><button class="btn sm" id="cGen" type="button">توليد</button></div></div>
+        <div class="field"><label for="cType">نوع الخصم</label><select class="input" id="cType"><option value="percent">نسبة مئوية %</option><option value="amount">مبلغ ثابت (ر.س)</option></select></div>
+        <div class="field"><label for="cValue">القيمة</label><input class="input" id="cValue" type="number" min="1" step="0.01" dir="ltr" placeholder="20"></div>
+        <div class="field"><label for="cPlans">ينطبق على</label><select class="input" id="cPlans"><option value="all">كل الخطط</option><option value="monthly">الشهري فقط</option><option value="yearly">السنوي فقط</option></select></div>
+        <div class="field"><label for="cMax">أقصى عدد استخدام</label><input class="input" id="cMax" type="number" min="1" dir="ltr" placeholder="بلا حد"></div>
+        <div class="field"><label for="cExp">ينتهي في</label><input class="input" id="cExp" type="date"></div>
+      </div>
+      <p class="muted" style="font-size:.85em;margin:0 0 10px">كل معلم يستخدم الكود مرة واحدة. خصم 100% يفعّل الاشتراك مجانًا مباشرة.</p>
+      <button class="btn primary" id="cCreate">إنشاء الكود</button>
+    </div>
+    <div class="card tw">
+      <table class="grid"><thead><tr><th>الكود</th><th>الخصم</th><th>الخطط</th><th>الاستخدام</th><th>ينتهي</th><th>الحالة</th><th></th></tr></thead><tbody id="cRows"></tbody></table>
     </div>
   </section>
 
@@ -259,7 +281,7 @@ $('delBtn').onclick = async () => {
 
 // ---------- المدفوعات ----------
 let payStatus = '';
-const PROVIDERS = { moyasar: 'ميسر', manual: 'يدوي', mock: 'تجريبي' };
+const PROVIDERS = { moyasar: 'ميسر', manual: 'يدوي', mock: 'تجريبي', coupon: 'كود خصم' };
 async function loadPayments() {
   const { payments } = await api('GET', '/api/admin/payments' + (payStatus ? '?status=' + payStatus : ''));
   $('payRows').innerHTML = payments.length ? payments.map((p) => `<tr>
@@ -267,7 +289,7 @@ async function loadPayments() {
       <td><b>${esc(p.name)}</b><div class="muted" style="font-size:.85em" dir="ltr">${esc(p.email)}</div></td>
       <td>${p.plan === 'yearly' ? 'سنوي' : 'شهري'}</td>
       <td class="num">${sar(p.amount)}</td>
-      <td>${PROVIDERS[p.provider] || esc(p.provider)}</td>
+      <td>${PROVIDERS[p.provider] || esc(p.provider)}${p.coupon ? `<div><span class="code" style="font-size:.8em">${esc(p.coupon)}</span></div>` : ''}</td>
       <td>${p.status === 'paid' ? '<span class="badge">✓ مدفوعة</span>' : '<span class="badge off">غير مكتملة</span>'}</td>
       <td dir="ltr" style="text-align:right;font-size:.82em" class="muted">${esc(p.provider_ref || '—')}</td></tr>`).join('')
     : '<tr><td colspan="7" class="empty">لا توجد مدفوعات</td></tr>';
@@ -358,6 +380,50 @@ $('rangeSeg').addEventListener('click', (e) => {
 });
 let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(renderCharts, 150); });
 
+// ---------- أكواد الخصم ----------
+const PLAN_LABEL = { all: 'كل الخطط', monthly: 'الشهري', yearly: 'السنوي' };
+async function loadCoupons() {
+  const { coupons } = await api('GET', '/api/admin/coupons');
+  $('cRows').innerHTML = coupons.length ? coupons.map((c) => {
+    const expired = c.expires_at && c.expires_at < Date.now();
+    const full = c.max_uses != null && c.uses >= c.max_uses;
+    const state = !c.active ? '<span class="badge off">موقوف</span>' : expired ? '<span class="badge off">منتهي</span>' : full ? '<span class="badge off">مكتمل</span>' : '<span class="badge">فعّال</span>';
+    return `<tr>
+      <td><span class="code">${esc(c.code)}</span></td>
+      <td>${c.type === 'percent' ? c.value + '%' : sar(c.value)}</td>
+      <td>${PLAN_LABEL[c.plans]}</td>
+      <td class="num">${c.uses}${c.max_uses != null ? ' / ' + c.max_uses : ''}</td>
+      <td>${c.expires_at ? fmtDate(c.expires_at) : '—'}</td>
+      <td>${state}</td>
+      <td style="white-space:nowrap"><button class="btn sm" data-ctoggle="${c.id}" data-on="${c.active ? 0 : 1}">${c.active ? 'إيقاف' : 'تفعيل'}</button>
+        <button class="btn sm ghost" data-ccopy="${esc(c.code)}" title="نسخ">نسخ</button>
+        <button class="btn sm ghost danger" data-cdel="${c.id}" title="حذف">حذف</button></td></tr>`;
+  }).join('') : '<tr><td colspan="7" class="empty">لا توجد أكواد خصم بعد</td></tr>';
+}
+$('cGen').onclick = () => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  $('cCode').value = 'INJAZ-' + Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => chars[b % chars.length]).join('');
+};
+$('cCreate').onclick = async () => {
+  const r = await act(() => api('POST', '/api/admin/coupons', {
+    code: $('cCode').value, type: $('cType').value, value: $('cValue').value,
+    plans: $('cPlans').value, maxUses: $('cMax').value, expiresAt: $('cExp').value,
+  }), 'تم إنشاء كود الخصم');
+  if (r) { ['cCode', 'cValue', 'cMax', 'cExp'].forEach((id) => { $(id).value = ''; }); loadCoupons(); }
+};
+let delArm = null;
+$('cRows').addEventListener('click', async (e) => {
+  const t = e.target.closest('[data-ctoggle]'), cp = e.target.closest('[data-ccopy]'), d = e.target.closest('[data-cdel]');
+  if (t) { if (await act(() => api('PUT', '/api/admin/coupons/' + t.dataset.ctoggle, { active: t.dataset.on === '1' }))) loadCoupons(); }
+  if (cp) navigator.clipboard.writeText(cp.dataset.ccopy).then(() => toast('تم نسخ الكود', 'ok'), () => {});
+  if (d) {
+    // تأكيد بضغطة ثانية بدل نافذة منبثقة
+    if (delArm !== d.dataset.cdel) { delArm = d.dataset.cdel; d.textContent = 'تأكيد الحذف؟'; setTimeout(() => { if (delArm === d.dataset.cdel) { delArm = null; d.textContent = 'حذف'; } }, 3000); return; }
+    delArm = null;
+    if (await act(() => api('DELETE', '/api/admin/coupons/' + d.dataset.cdel), 'تم حذف الكود')) loadCoupons();
+  }
+});
+
 // ---------- الإعدادات ----------
 async function loadSettings() {
   const s = await api('GET', '/api/admin/settings');
@@ -388,7 +454,7 @@ async function loadVersion() {
 }
 
 // ---------- التبويبات ----------
-const loaders = { users: () => loadUsers(), payments: loadPayments, stats: loadStats, settings: loadSettings };
+const loaders = { users: () => loadUsers(), payments: loadPayments, coupons: loadCoupons, stats: loadStats, settings: loadSettings };
 document.querySelector('.tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   document.querySelectorAll('.tabs button').forEach((x) => x.classList.toggle('on', x === b));

@@ -97,6 +97,29 @@ const cols = (t) => db.prepare(`PRAGMA table_info(${t})`).all().map((c) => c.nam
 if (!cols('payments').includes('token')) db.exec('ALTER TABLE payments ADD COLUMN token TEXT');
 if (!cols('users').includes('suspended')) db.exec('ALTER TABLE users ADD COLUMN suspended INTEGER NOT NULL DEFAULT 0');
 db.exec('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+// أكواد الخصم واستخداماتها
+db.exec(`
+  CREATE TABLE IF NOT EXISTS coupons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    type TEXT NOT NULL,                -- percent | amount
+    value REAL NOT NULL,
+    plans TEXT NOT NULL DEFAULT 'all', -- all | monthly | yearly
+    max_uses INTEGER,                  -- NULL = بلا حد
+    expires_at INTEGER,                -- NULL = بلا انتهاء
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE TABLE IF NOT EXISTS coupon_redemptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    coupon_id INTEGER NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    payment_id INTEGER,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_redemptions_coupon ON coupon_redemptions(coupon_id);
+`);
+if (!cols('payments').includes('coupon_id')) db.exec('ALTER TABLE payments ADD COLUMN coupon_id INTEGER');
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_token ON payments(token)');
 
 module.exports = { db, DATA_DIR };

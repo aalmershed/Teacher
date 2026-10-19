@@ -23,6 +23,11 @@ main{padding:36px 0 60px;text-align:center}
 .paybox{max-width:460px;margin:26px auto 0;text-align:right;padding:22px;display:none}
 .paybox.open{display:block}
 .paybox h3{margin:0 0 4px}
+.coupon{max-width:460px;margin:22px auto 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+.coupon .input{max-width:220px;text-transform:uppercase;direction:ltr;text-align:center}
+.coupon-ok{color:#2d7a52;font-weight:700}
+.price s{color:var(--muted);font-size:.5em;font-weight:500;margin:0 10px;display:inline-block}
+.plan .off{display:inline-block;background:var(--accent);color:#fff;font-size:.78em;font-weight:700;padding:.1em .6em;border-radius:99px;margin-bottom:4px}
 .secure{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.85em;margin-top:12px;justify-content:center}
 </style>
 </head>
@@ -33,6 +38,12 @@ main{padding:36px 0 60px;text-align:center}
   <div class="result" id="result"></div>
   <div class="card status" id="status"></div>
   <div class="plans" id="plans"></div>
+  <div class="coupon" id="couponBox">
+    <span class="muted">لديك كود خصم؟</span>
+    <input class="input" id="couponInput" placeholder="الكود" maxlength="30" aria-label="كود الخصم">
+    <button class="btn sm" id="couponBtn">تطبيق</button>
+    <span id="couponMsg"></span>
+  </div>
   <div style="margin-top:26px"><button class="btn primary lg" id="payBtn">متابعة الدفع</button></div>
   <div class="card paybox" id="paybox">
     <h3 id="payTitle">إتمام الدفع</h3>
@@ -90,28 +101,59 @@ async function showMoyasar(form) {
     document.getElementById('payBtn').textContent = 'طلب التفعيل';
   }
 
-  const { plans, currency } = await api('GET', '/api/plans');
+  const d = await api('GET', '/api/plans');
+  plans = d.plans; currency = d.currency;
+  renderPlans();
+})();
+
+let plans = [], currency = 'ر.س', coupon = null;
+function finalPrice(p) { return coupon && coupon.prices[p.id] && coupon.prices[p.id].applies ? coupon.prices[p.id].final : p.price; }
+function renderPlans() {
   const box = document.getElementById('plans');
-  box.innerHTML = plans.map((p) => `
-    <div class="card plan ${p.id === sel ? 'sel' : ''}" data-id="${p.id}">
+  const monthly = plans.find((x) => x.id === 'monthly');
+  box.innerHTML = plans.map((p) => {
+    const f = finalPrice(p), discounted = f !== p.price;
+    return `<div class="card plan ${p.id === sel ? 'sel' : ''}" data-id="${p.id}">
+      ${discounted ? `<span class="off">${esc(coupon.label)}</span>` : ''}
       <h3>${esc(p.name)}</h3>
-      <div class="price">${p.price} <small>${currency} / ${p.id === 'yearly' ? 'سنة' : 'شهر'}</small></div>
-      <div class="muted">${p.id === 'yearly' ? `توفير ${Math.round(100 - (p.price / (plans.find((x) => x.id === 'monthly').price * 12)) * 100)}% مقارنة بالشهري` : 'مرونة كاملة، جدّد متى شئت'}</div>
-    </div>`).join('');
+      <div class="price">${f === 0 ? 'مجانًا' : f}${discounted ? `<s>${p.price}</s>` : ''} <small>${f === 0 ? '' : currency + ' / ' + (p.id === 'yearly' ? 'سنة' : 'شهر')}</small></div>
+      <div class="muted">${p.id === 'yearly' ? `توفير ${Math.round(100 - (p.price / (monthly.price * 12)) * 100)}% مقارنة بالشهري` : 'مرونة كاملة، جدّد متى شئت'}</div>
+    </div>`;
+  }).join('');
   box.querySelectorAll('.plan').forEach((el) => el.onclick = () => {
     sel = el.dataset.id;
     box.querySelectorAll('.plan').forEach((x) => x.classList.toggle('sel', x === el));
+    updatePayLabel();
   });
-})();
+  updatePayLabel();
+}
+function updatePayLabel() {
+  const p = plans.find((x) => x.id === sel);
+  if (p && coupon && finalPrice(p) === 0) document.getElementById('payBtn').textContent = 'تفعيل الاشتراك مجانًا';
+}
+
+document.getElementById('couponBtn').onclick = async () => {
+  const msg = document.getElementById('couponMsg');
+  const code = document.getElementById('couponInput').value.trim();
+  if (!code) return;
+  try {
+    coupon = await api('POST', '/api/coupons/check', { code });
+    msg.className = 'coupon-ok'; msg.style.color = ''; msg.textContent = `✓ تم تطبيق ${coupon.label}`;
+  } catch (e) {
+    coupon = null; msg.className = 'muted'; msg.style.color = 'var(--danger)'; msg.textContent = e.message;
+  }
+  renderPlans();
+};
+document.getElementById('couponInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('couponBtn').click(); });
 
 document.getElementById('payBtn').onclick = async (e) => {
   const btn = e.currentTarget;
   btn.disabled = true;
   try {
-    const r = await api('POST', '/api/subscribe', { plan: sel });
+    const r = await api('POST', '/api/subscribe', { plan: sel, coupon: coupon ? coupon.code : '' });
     if (r.provider === 'moyasar') { await showMoyasar(r.form); btn.disabled = false; btn.textContent = 'تغيير الخطة'; return; }
     if (r.redirectUrl) { location.href = r.redirectUrl; return; }
-    toast('تم تفعيل الاشتراك بنجاح 🎉', 'ok');
+    toast(r.free ? 'تم تفعيل اشتراكك مجانًا بكود الخصم 🎉' : 'تم تفعيل الاشتراك بنجاح 🎉', 'ok');
     setTimeout(() => { location.href = '/app'; }, 900);
   } catch (err) { toast(err.message, 'err'); btn.disabled = false; }
 };

@@ -55,22 +55,70 @@ function activate(userId, planId, provider, ref) {
     .run(userId, planId, 'active', base + plan.days * DAY, provider, ref || null);
 }
 
-// يجهّز الدفع: يفعّل مباشرة في الوضع التجريبي، أو يُرجع إعدادات نموذج ميسر
-function createCheckout(userId, planId, baseUrl) {
+// ---------- أكواد الخصم ----------
+const normCode = (c) => String(c || '').trim().toUpperCase();
+const couponUses = (id) => db.prepare('SELECT COUNT(*) AS n FROM coupon_redemptions WHERE coupon_id = ?').get(id).n;
+
+// يتحقق من الكود لهذا المستخدم ويحسب السعر بعد الخصم لكل خطة
+function evaluateCoupon(code, userId) {
+  const c = db.prepare('SELECT * FROM coupons WHERE code = ?').get(normCode(code));
+  if (!c || !c.active) return { ok: false, error: 'كود الخصم غير صحيح' };
+  if (c.expires_at && c.expires_at < Date.now()) return { ok: false, error: 'انتهت صلاحية كود الخصم' };
+  if (c.max_uses != null && couponUses(c.id) >= c.max_uses) return { ok: false, error: 'وصل كود الخصم للحد الأقصى من الاستخدام' };
+  if (db.prepare('SELECT 1 FROM coupon_redemptions WHERE coupon_id = ? AND user_id = ?').get(c.id, userId)) return { ok: false, error: 'استخدمت هذا الكود من قبل' };
+  const prices = {};
+  for (const p of Object.values(getPlans())) {
+    const applies = c.plans === 'all' || c.plans === p.id;
+    let final = p.price;
+    if (applies) final = c.type === 'percent' ? p.price * (1 - c.value / 100) : p.price - c.value;
+    final = Math.max(0, Math.round(final * 100) / 100);
+    if (final < 1) final = 0; // أقل من ريال = مجاني
+    prices[p.id] = { price: p.price, final, applies };
+  }
+  return { ok: true, coupon: c, prices, label: c.type === 'percent' ? `خصم ${c.value}%` : `خصم ${c.value} ر.س` };
+}
+
+function redeemCoupon(couponId, userId, paymentId) {
+  if (!couponId) return;
+  db.prepare('INSERT INTO coupon_redemptions (coupon_id, user_id, payment_id) VALUES (?, ?, ?)').run(couponId, userId, paymentId || null);
+}
+
+// يجهّز الدفع: يفعّل مباشرة في الوضع التجريبي أو عند خصم 100%، أو يُرجع إعدادات نموذج ميسر
+function createCheckout(userId, planId, baseUrl, couponCode) {
   const plan = getPlans()[planId];
   if (!plan) throw new Error('خطة غير معروفة');
+
+  let coupon = null, price = plan.price;
+  if (normCode(couponCode)) {
+    const ev = evaluateCoupon(couponCode, userId);
+    if (!ev.ok) throw new Error(ev.error);
+    if (!ev.prices[planId].applies) throw new Error('كود الخصم لا ينطبق على هذه الخطة');
+    coupon = ev.coupon;
+    price = ev.prices[planId].final;
+  }
+  const amount = Math.round(price * 100); // بالهللة
+  const token = crypto.randomBytes(16).toString('hex');
+
+  // خصم كامل: تفعيل مجاني فوري في أي وضع دفع
+  if (amount === 0) {
+    const info = db.prepare("INSERT INTO payments (user_id, plan, amount, status, provider, provider_ref, token, coupon_id) VALUES (?, ?, 0, 'paid', 'coupon', ?, ?, ?)")
+      .run(userId, planId, 'coupon-' + coupon.code + '-' + Date.now(), token, coupon.id);
+    redeemCoupon(coupon.id, userId, Number(info.lastInsertRowid));
+    activate(userId, planId, 'coupon', coupon.code);
+    return { done: true, free: true };
+  }
+
   // التفعيل اليدوي: المدير يفعّل الاشتراك من لوحة الإدارة بعد استلام المبلغ
-  if (PROVIDER === 'manual') throw new Error('التفعيل حاليًا يتم يدويًا. تواصل معنا لإتمام الدفع وسيُفعّل اشتراكك مباشرة.');
+  if (PROVIDER === 'manual') throw new Error(`التفعيل حاليًا يتم يدويًا. تواصل معنا لإتمام الدفع (${price} ر.س${coupon ? ' بعد الخصم' : ''}) وسيُفعّل اشتراكك مباشرة.`);
   if (PROVIDER === 'moyasar' && (!MOYASAR.publishableKey || !MOYASAR.secretKey)) throw new Error('بوابة الدفع غير مهيأة. تواصل مع الدعم.');
 
-  const token = crypto.randomBytes(16).toString('hex');
-  const amount = Math.round(plan.price * 100); // بالهللة
-  const info = db.prepare('INSERT INTO payments (user_id, plan, amount, status, provider, token) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(userId, planId, amount, 'pending', PROVIDER, token);
+  const info = db.prepare('INSERT INTO payments (user_id, plan, amount, status, provider, token, coupon_id) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(userId, planId, amount, 'pending', PROVIDER, token, coupon ? coupon.id : null);
   const paymentId = Number(info.lastInsertRowid);
 
   if (PROVIDER === 'mock') {
     db.prepare("UPDATE payments SET status = 'paid', provider_ref = ? WHERE id = ?").run('mock-' + paymentId, paymentId);
+    redeemCoupon(coupon && coupon.id, userId, paymentId);
     activate(userId, planId, 'mock', 'mock-' + paymentId);
     return { done: true };
   }
@@ -81,7 +129,7 @@ function createCheckout(userId, planId, baseUrl) {
         publishable_api_key: MOYASAR.publishableKey,
         amount,
         currency: 'SAR',
-        description: `${plan.name} — ملف إنجاز المعلم`,
+        description: `${plan.name}${coupon ? ' (بعد الخصم)' : ''} — ملف إنجاز المعلم`,
         callback_url: `${baseUrl}/payments/moyasar/callback`,
         methods: MOYASAR.methods,
         supported_networks: ['mada', 'visa', 'mastercard'],
@@ -111,7 +159,10 @@ async function confirmMoyasarPayment(moyasarId) {
   if (db.prepare('SELECT 1 FROM payments WHERE provider_ref = ?').get(p.id)) return { ok: false, reason: 'عملية الدفع مستخدمة مسبقًا' };
   // التحديث مشروط بأن الحالة ما زالت pending حتى لا يُفعَّل نفس الطلب مرتين بالتوازي
   const upd = db.prepare("UPDATE payments SET status = 'paid', provider_ref = ? WHERE id = ? AND status = 'pending'").run(p.id, row.id);
-  if (upd.changes === 1) activate(row.user_id, row.plan, 'moyasar', p.id);
+  if (upd.changes === 1) {
+    redeemCoupon(row.coupon_id, row.user_id, row.id);
+    activate(row.user_id, row.plan, 'moyasar', p.id);
+  }
   return { ok: true, userId: row.user_id };
 }
 
@@ -149,4 +200,4 @@ function recordManualPayment(userId, planId, adminId) {
   return ref;
 }
 
-module.exports = { getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };
+module.exports = { evaluateCoupon, couponUses, normCode, getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };
