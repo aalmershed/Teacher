@@ -38,6 +38,14 @@ let docTarget = null;
   }
   document.title = project.title + ' — إنجاز';
   // الملفات القديمة: صفحة البسملة كان فيها عنوان الملف والاسم، صارت للآية فقط
+  // الصيغة القديمة لبنود الشواهد (ملف واحد) ← قائمة ملفات برمز QR واحد للبند
+  project.data.pages.forEach((p) => p.blocks.forEach((b) => {
+    if (b.type !== 'links') return;
+    b.items.forEach((it) => {
+      if (it.fileId && !it.files) { it.files = [{ id: it.fileId, name: it.fileName || 'ملف' }]; delete it.fileId; delete it.fileName; }
+      if (it.files && it.files.length && !it.bundleId) it.bundleId = randomHex(16);
+    });
+  }));
   project.data.pages.filter((p) => p.type === 'opening').forEach((p) => p.blocks.forEach((b) => {
     if (b.type === 'fields') b.items = b.items.filter((i) => i.label === 'الآية');
   }));
@@ -301,17 +309,21 @@ function blockBody(b, bi, locked, dis) {
   }
 }
 
-// رابط الشاهد: الملف المرفوع له رابط عام على الموقع، وإلا الرابط الذي كتبه المعلم
-const fileLink = (id) => `${project.baseUrl || location.origin}/f/${id}`;
-const itemUrl = (it) => (it.fileId ? fileLink(it.fileId) : (it.url || '').trim());
+// رابط الشاهد: ملفات البند لها صفحة عامة واحدة ثابتة (رمز QR واحد)، وإلا الرابط الذي كتبه المعلم
+const siteBase = () => project.baseUrl || location.origin;
+const fileLink = (id) => `${siteBase()}/f/${id}`;
+const itemUrl = (it) => (it.files && it.files.length ? `${siteBase()}/b/${it.bundleId}` : (it.url || '').trim());
+const randomHex = (bytes) => Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (x) => x.toString(16).padStart(2, '0')).join('');
 
 function linkSource(it, bi, i, at, dis) {
-  if (it.fileId) {
-    return `<span class="fchip" title="${esc(it.fileName)}">📄 <a href="${esc(fileLink(it.fileId))}" target="_blank" rel="noopener">${esc(it.fileName || 'ملف مرفوع')}</a></span>
-      ${readOnly ? '' : `<button class="btn sm" data-act="attach" data-b="${bi}" data-i="${i}" title="استبدال الملف">⇄</button><button class="btn sm ghost" data-act="detach" data-b="${bi}" data-i="${i}" title="إزالة الملف">✕</button>`}`;
+  const files = it.files || [];
+  if (files.length) {
+    const chips = files.map((f, fi) => `<span class="fchip" title="${esc(f.name)}">📄 <a href="${esc(fileLink(f.id))}" target="_blank" rel="noopener">${esc(f.name)}</a>${readOnly ? '' : `<button class="x" data-act="rmFile" data-b="${bi}" data-i="${i}" data-f="${fi}" title="إزالة الملف">✕</button>`}</span>`).join('');
+    return `<div class="fstack">${chips}${readOnly ? '' : `<button class="btn sm" data-act="attach" data-b="${bi}" data-i="${i}" title="إضافة ملفات لنفس البند">＋ ملف</button>`}
+      ${files.length > 1 ? `<span class="fcount">${files.length} ملفات · رمز QR واحد يفتح قائمة بها</span>` : ''}</div>`;
   }
-  return `<input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://... أو ارفع ملف" dir="ltr" ${dis}>
-    ${readOnly ? '' : `<button class="btn sm accent" data-act="attach" data-b="${bi}" data-i="${i}" title="رفع ملف">📎 رفع ملف</button>`}`;
+  return `<input class="input u" ${at(`items.${i}.url`)} value="${esc(it.url)}" placeholder="https://... أو ارفع ملفات" dir="ltr" ${dis}>
+    ${readOnly ? '' : `<button class="btn sm accent" data-act="attach" data-b="${bi}" data-i="${i}" title="رفع ملف أو أكثر">📎 رفع ملفات</button>`}`;
 }
 
 // حقل الاسم يُعبّأ تلقائيًا من اسم العضوية ولا يُعدّل
@@ -467,7 +479,7 @@ area.addEventListener('click', (e) => {
       $('docInput').value = '';
       $('docInput').click();
       break;
-    case 'detach': delete b.items[i].fileId; delete b.items[i].fileName; b.items[i].url = ''; break;
+    case 'rmFile': b.items[i].files.splice(Number(btn.dataset.f), 1); break;
     case 'addImage': b.items.push({ uploadId: '', caption: '' }); break;
     case 'rmItem': e.stopPropagation(); b.items.splice(i, 1); break;
     case 'addRow': b.rows.push(b.columns.map(() => '')); break;
@@ -541,24 +553,36 @@ function uploadWithProgress(url, file, onProgress) {
   });
 }
 
+// يرفع ملفًا أو أكثر ويضيفها لنفس البند (رمز QR البند لا يتغير عند إضافة ملفات)
 $('docInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file || !docTarget) return;
+  const list = [...e.target.files];
+  if (!list.length || !docTarget) return;
   const { page, bi, i } = docTarget;
+  const item = pages()[page].blocks[bi].items[i];
+  const room = 20 - (item.files || []).length;
+  if (room <= 0) return toast('الحد الأقصى 20 ملفًا للبند الواحد', 'err');
+  const queue = list.slice(0, room);
+  if (list.length > room) toast(`سيُرفع ${room} ملفات فقط (الحد 20 للبند)`, 'err');
   const cell = area.querySelector(`.src[data-src="${bi}-${i}"]`);
-  const show = (pct) => { if (cell && page === cur) cell.innerHTML = `<div class="upbar"><span style="width:${pct}%"></span></div><span class="muted" style="font-size:.85em;white-space:nowrap">جارٍ الرفع ${pct}%</span>`; };
-  show(0);
-  try {
-    const { id, name } = await uploadWithProgress('/api/files', file, show);
-    const item = pages()[page].blocks[bi].items[i];
-    item.fileId = id;
-    item.fileName = name;
-    item.url = '';
-    if (!item.title.trim() || item.title === 'رابط جديد') item.title = name.replace(/\.[^.]+$/, '');
-    markDirty();
-    toast('تم رفع الملف وإنشاء رمز QR له', 'ok');
-  } catch (err) {
-    toast(err.message, 'err');
+  let added = 0;
+  for (let k = 0; k < queue.length; k++) {
+    const show = (pct) => {
+      if (cell && page === cur) cell.innerHTML = `<div class="upbar"><span style="width:${pct}%"></span></div><span class="muted" style="font-size:.85em;white-space:nowrap">${queue.length > 1 ? `ملف ${k + 1} من ${queue.length} · ` : ''}${pct}%</span>`;
+    };
+    show(0);
+    try {
+      const { id, name } = await uploadWithProgress('/api/files', queue[k], show);
+      if (!item.files) item.files = [];
+      if (!item.bundleId) item.bundleId = randomHex(16);
+      item.files.push({ id, name });
+      item.url = '';
+      if (!item.title.trim() || item.title === 'رابط جديد') item.title = name.replace(/\.[^.]+$/, '');
+      added++;
+      markDirty();
+    } catch (err) {
+      toast(`${queue[k].name}: ${err.message}`, 'err');
+    }
   }
+  if (added) toast(added > 1 ? `تم رفع ${added} ملفات على نفس رمز QR` : 'تم رفع الملف وإنشاء رمز QR له', 'ok');
   if (page === cur) renderPage();
 });

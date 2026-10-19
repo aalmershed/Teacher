@@ -97,9 +97,11 @@ async function renderBlock(b, ctx, wide) {
     }
     case 'links': {
       const rows = await Promise.all((b.items || []).map(async (it) => {
-        const url = it.fileId ? ctx.fileUrl(it.fileId) : safeUrl(it.url);
+        const count = (it.files || []).length;
+        const url = count && it.bundleId ? ctx.bundleUrl(it.bundleId) : it.fileId ? ctx.fileUrl(it.fileId) : safeUrl(it.url);
         const qr = url ? await QRCode.toString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: ctx.theme.ink, light: '#0000' } }) : '';
-        const pill = url ? `<a class="pill" href="${esc(url)}">${esc(it.title)}</a>` : `<span class="pill">${esc(it.title)}</span>`;
+        const label = esc(it.title) + (count > 1 ? ` <small class="cnt">${count} ملفات</small>` : '');
+        const pill = url ? `<a class="pill" href="${esc(url)}">${label}</a>` : `<span class="pill">${label}</span>`;
         return `<div class="lk">${pill}${qr ? `<a class="qr" href="${esc(url)}">${qr}</a>` : ''}</div>`;
       }));
       return `<div class="blk">${head}<div class="links">${rows.join('')}</div></div>`;
@@ -221,6 +223,7 @@ async function renderProject(project, opts = {}) {
     imageUrl: opts.imageUrl || ((id) => `/api/uploads/${id}`),
     imageLink: opts.imageLink || ((id) => `${baseUrl}/i/${id}`),
     fileUrl: (id) => `${baseUrl}/f/${id}`,
+    bundleUrl: (id) => `${baseUrl}/b/${id}`,
   };
 
   const pattern = layout === 'single' ? coverPattern(theme, 210, 297) : coverPattern(theme, 297, 210);
@@ -348,6 +351,7 @@ figcaption{font-size:.85em;margin-top:1.2mm;font-weight:500}
 .links{display:flex;flex-direction:column;gap:2.6mm}
 .lk{display:flex;align-items:center;gap:3mm}
 .pill{flex:1;display:block;text-decoration:none;color:${t.ink};background:rgba(255,255,255,.8);border-inline-start:2.2mm solid ${t.accent2};border-radius:2mm 6mm 6mm 2mm;padding:2mm 4mm;font-weight:700;box-shadow:0 .6mm 1.5mm rgba(0,0,0,.08)}
+.pill .cnt{font-size:.78em;font-weight:500;color:${t.accent2};margin-inline-start:1.5mm}
 a.pill::after{content:' ⟵';color:${t.accent2}}
 .qr{display:block;width:17mm;height:17mm;background:#fff;padding:1.2mm;border-radius:1.5mm;flex:none}
 .qr svg{width:100%;height:100%;display:block}

@@ -87,6 +87,11 @@ body{display:flex;flex-direction:column;overflow:hidden}
 .fchip{flex:1;min-width:0;display:flex;align-items:center;gap:6px;background:var(--brand-l);border:1px solid #bcd8d2;border-radius:10px;padding:.5em .75em;font-weight:700;overflow:hidden;white-space:nowrap}
 .fchip a{overflow:hidden;text-overflow:ellipsis;color:var(--brand-d);text-decoration:none}
 .fchip a:hover{text-decoration:underline}
+.fstack{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+.fstack .fchip{flex:0 1 auto;max-width:100%;padding:.4em .6em}
+.fchip .x{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:.85em}
+.fchip .x:hover{color:var(--danger)}
+.fcount{flex-basis:100%;font-size:.8em;color:var(--brand-d)}
 .upbar{flex:1;height:8px;background:var(--bg);border-radius:9px;overflow:hidden}
 .upbar span{display:block;height:100%;background:var(--brand);transition:width .2s}
 .lrow .qr{width:54px;height:54px;border:1px dashed var(--line);border-radius:8px;display:grid;place-items:center;font-size:.65em;color:var(--muted);background:#fff;overflow:hidden}
@@ -162,7 +167,7 @@ body{display:flex;flex-direction:column;overflow:hidden}
 </div>
 
 <input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
-<input type="file" id="docInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mp3,.txt" hidden>
+<input type="file" id="docInput" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.webp,.gif,.mp4,.mp3,.txt" multiple hidden>
 <script src="/assets/js/common.js"></script>
 <script src="/assets/js/editor.js"></script>
 </body>

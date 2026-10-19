@@ -123,6 +123,27 @@ const BLOCK_TYPES = new Set(['text', 'fields', 'table', 'images', 'links', 'quot
 const PAGE_TYPES = new Set(['cover', 'opening', 'toc', 'section', 'backcover']);
 const str = (v, max = 2000) => String(v ?? '').slice(0, max);
 const FILE_ID = /^[a-f0-9]{32}$/;
+const MAX_FILES_PER_ITEM = 20;
+const newBundleId = () => crypto.randomBytes(16).toString('hex');
+
+// يحدّث مجموعات الملفات (رمز QR لكل بند) ويحذف من البنود الملفات التي لا يملكها المعلم
+function syncBundles(userId, data) {
+  const owns = db.prepare('SELECT 1 FROM files WHERE id = ? AND user_id = ?');
+  const upsert = db.prepare(`INSERT INTO bundles (id, user_id, title, files, updated_at) VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(id) DO UPDATE SET title = excluded.title, files = excluded.files, updated_at = excluded.updated_at
+    WHERE bundles.user_id = excluded.user_id`);
+  for (const p of data.pages) {
+    for (const b of p.blocks) {
+      if (b.type !== 'links') continue;
+      for (const it of b.items) {
+        if (!it.files) continue;
+        it.files = it.files.filter((f) => owns.get(f.id, userId));
+        upsert.run(it.bundleId, userId, it.title, JSON.stringify(it.files.map((f) => f.id)));
+      }
+    }
+  }
+  return data;
+}
 
 function cleanData(data) {
   if (!data || !Array.isArray(data.pages)) throw new Error('بيانات غير صالحة');
@@ -148,9 +169,14 @@ function cleanData(data) {
         case 'images': return { ...base, items: (b.items || []).slice(0, 24).map((i) => ({ uploadId: /^[a-f0-9]{24}$/.test(i.uploadId) ? i.uploadId : '', caption: str(i.caption, 300) })) };
         case 'links': return {
           ...base,
-          items: (b.items || []).slice(0, 40).map((i) => (FILE_ID.test(i.fileId)
-            ? { title: str(i.title, 200), url: '', fileId: i.fileId, fileName: str(i.fileName, 200) }
-            : { title: str(i.title, 200), url: str(i.url, 2000) })),
+          items: (b.items || []).slice(0, 40).map((i) => {
+            // الصيغة القديمة: ملف واحد في fileId
+            const raw = Array.isArray(i.files) ? i.files : (FILE_ID.test(i.fileId) ? [{ id: i.fileId, name: i.fileName }] : []);
+            const files = raw.filter((f) => f && FILE_ID.test(f.id)).slice(0, MAX_FILES_PER_ITEM).map((f) => ({ id: f.id, name: str(f.name, 200) }));
+            return files.length
+              ? { title: str(i.title, 200), url: '', files, bundleId: FILE_ID.test(i.bundleId) ? i.bundleId : newBundleId() }
+              : { title: str(i.title, 200), url: str(i.url, 2000) };
+          }),
         };
         case 'quote': return { ...base, text: str(b.text, 1000), author: str(b.author, 200) };
         default: return base;
@@ -188,7 +214,7 @@ app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
   try {
-    const data = applyAccountName(cleanData(req.body.data), req.user.name);
+    const data = syncBundles(req.user.id, applyAccountName(cleanData(req.body.data), req.user.name));
     const title = str(req.body.title, 200).trim() || p.title;
     db.prepare("UPDATE projects SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?").run(title, JSON.stringify(data), p.id);
     res.json({ ok: true, updated_at: db.prepare('SELECT updated_at FROM projects WHERE id = ?').get(p.id).updated_at });
@@ -200,7 +226,11 @@ app.put('/api/projects/:id', requireAuth, requireActive, (req, res) => {
 app.post('/api/projects/:id/duplicate', requireAuth, requireActive, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
-  const info = db.prepare('INSERT INTO projects (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, p.title + ' (نسخة)', JSON.stringify(p.data));
+  // النسخة تأخذ رموز QR جديدة حتى لا يؤثر تعديلها على الملف الأصلي
+  const data = cleanData(p.data);
+  data.pages.forEach((pg) => pg.blocks.forEach((b) => { if (b.type === 'links') b.items.forEach((it) => { if (it.files) it.bundleId = newBundleId(); }); }));
+  syncBundles(req.user.id, data);
+  const info = db.prepare('INSERT INTO projects (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, p.title + ' (نسخة)', JSON.stringify(data));
   res.json({ id: Number(info.lastInsertRowid) });
 });
 
@@ -310,6 +340,45 @@ app.get('/f/:id', (req, res) => {
 });
 
 // متاح بدون تسجيل دخول لتجربة رمز QR في الصفحة الرئيسية (نص قصير فقط)
+// صفحة بند الشواهد (يفتحها رمز QR): ملف واحد يُفتح مباشرة، وأكثر من ملف تظهر قائمة بها
+const FILE_KIND = (mime) => (/pdf/.test(mime) ? ['PDF', '#c4534a'] : /word/.test(mime) ? ['Word', '#2b5797'] : /sheet|excel/.test(mime) ? ['Excel', '#1e7145']
+  : /presentation|powerpoint/.test(mime) ? ['عرض', '#c55a11'] : /^image\//.test(mime) ? ['صورة', '#5f978f'] : /^video\//.test(mime) ? ['فيديو', '#7c6aa8']
+  : /^audio\//.test(mime) ? ['صوت', '#7c6aa8'] : ['ملف', '#6c7471']);
+const fmtSize = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' م.ب' : Math.max(1, Math.round(n / 1024)) + ' ك.ب');
+const escHtml = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+app.get('/b/:id', (req, res) => {
+  if (!FILE_ID.test(req.params.id)) return res.status(404).send('الصفحة غير موجودة');
+  const bundle = db.prepare('SELECT b.*, u.name AS teacher FROM bundles b JOIN users u ON u.id = b.user_id WHERE b.id = ?').get(req.params.id);
+  if (!bundle) return res.status(404).send('الصفحة غير موجودة');
+  const get = db.prepare('SELECT * FROM files WHERE id = ? AND user_id = ?');
+  const files = JSON.parse(bundle.files).map((id) => get.get(id, bundle.user_id)).filter(Boolean);
+  if (files.length === 1) return res.redirect(302, `/f/${files[0].id}`);
+  const cards = files.map((f) => {
+    const [kind, color] = FILE_KIND(f.mime);
+    const thumb = /^image\//.test(f.mime) ? `<img src="/f/${f.id}" alt="" loading="lazy">` : `<span class="ic" style="background:${color}">${kind}</span>`;
+    return `<a class="card" href="/f/${f.id}" target="_blank" rel="noopener">${thumb}<span class="nm">${escHtml(f.filename)}</span><span class="meta">${kind} · ${fmtSize(f.size)}</span><span class="go">فتح ←</span></a>`;
+  }).join('');
+  res.set({ 'Content-Security-Policy': "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; font-src 'self'", 'X-Content-Type-Options': 'nosniff' });
+  res.type('html').send(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escHtml(bundle.title || 'الشواهد')}</title><style>
+@font-face{font-family:'Tajawal';font-weight:500;src:url(/fonts/tajawal/files/tajawal-arabic-500-normal.woff2) format('woff2')}
+@font-face{font-family:'Tajawal';font-weight:800;src:url(/fonts/tajawal/files/tajawal-arabic-800-normal.woff2) format('woff2')}
+*{box-sizing:border-box}body{margin:0;font-family:'Tajawal',system-ui,sans-serif;background:#f6f4f0;color:#2f3432}
+header{background:#5f978f;background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.12) 0 10px,transparent 10px 30px);color:#fff;padding:34px 16px 54px;text-align:center}
+header small{opacity:.85}header h1{margin:.3em 0 .1em;font-size:1.6em;font-weight:800}
+main{max-width:720px;margin:-30px auto 40px;padding:0 16px;display:grid;gap:10px}
+.card{display:grid;grid-template-columns:56px 1fr auto;grid-template-rows:auto auto;column-gap:14px;align-items:center;background:#fff;border:1px solid #e4e0d9;border-radius:14px;padding:12px 14px;text-decoration:none;color:inherit;box-shadow:0 2px 10px rgba(30,40,38,.06)}
+.card:hover{border-color:#5f978f}
+.card img,.card .ic{grid-row:1 / 3;width:56px;height:56px;border-radius:10px;object-fit:cover}
+.card .ic{display:grid;place-items:center;color:#fff;font-weight:800;font-size:.8em}
+.nm{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.meta{color:#6c7471;font-size:.85em}
+.go{grid-row:1 / 3;grid-column:3;color:#467a73;font-weight:800;white-space:nowrap}
+footer{text-align:center;color:#6c7471;font-size:.85em;padding-bottom:30px}
+</style></head><body><header><small>${escHtml(bundle.teacher)}</small><h1>${escHtml(bundle.title || 'الشواهد')}</h1><small>${files.length} ملفات</small></header>
+<main>${cards || '<p style="text-align:center">لا توجد ملفات في هذا البند حاليًا.</p>'}</main><footer>ملف إنجاز</footer></body></html>`);
+});
+
 app.get('/api/qr', async (req, res) => {
   const u = str(req.query.u, req.user ? 2000 : 300);
   if (!u) return res.status(400).end();

@@ -78,6 +78,15 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  -- مجموعة ملفات بند واحد: رمز QR واحد ثابت يفتح صفحة فيها كل ملفات البند
+  CREATE TABLE IF NOT EXISTS bundles (
+    id TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title TEXT NOT NULL DEFAULT '',
+    files TEXT NOT NULL DEFAULT '[]',
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_files_user ON files(user_id);
   CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
   CREATE INDEX IF NOT EXISTS idx_subs_user ON subscriptions(user_id);
