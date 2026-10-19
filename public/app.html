@@ -69,7 +69,7 @@ main{padding:28px 0 60px}
   <div class="modal">
     <h3>ملف إنجاز جديد</h3>
     <p class="muted" style="margin-top:0">سيُنشأ ملف يحتوي على جميع صفحات القالب بعناوينها، وتقدر تعدّلها كما تريد.</p>
-    <div class="field"><label for="newTitle">اسم الملف</label><input class="input" id="newTitle" value="ملف إنجاز 1448"></div>
+    <div class="field"><label for="newTitle">اسم الملف</label><input class="input" id="newTitle" value="ملف إنجاز"></div>
     <div class="field"><label>نمط الألوان</label><div class="theme-pick" id="themePick"></div></div>
     <div class="modal-actions">
       <button class="btn primary" id="createBtn" onclick="createProject()">إنشاء وفتح الملف</button>
@@ -151,6 +151,8 @@ async function loadProjects() {
 }
 
 function openNew() {
+  const year = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).formatToParts(new Date()).find((p) => p.type === 'year').value;
+  document.getElementById('newTitle').value = 'ملف إنجاز ' + year;
   openModal('newModal');
   setTimeout(() => document.getElementById('newTitle').select(), 50);
 }

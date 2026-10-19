@@ -254,7 +254,7 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
 <section class="hero">
   <div class="wrap hero-grid">
     <div>
-      <span class="eyebrow">للمعلمين والمعلمات · العام الدراسي 1448هـ</span>
+      <span class="eyebrow">للمعلمين والمعلمات · لجميع التخصصات</span>
       <h1>ملف إنجازك جاهز<br><span class="rotator" id="rotator"><span>في دقائق</span></span></h1>
       <p class="lead">كل صفحات ملف الإنجاز جاهزة: السيرة الذاتية، الجدول، توزيع المنهج، الخطط، الشواهد وأكثر. عبّئ بياناتك وارفع شواهدك، وحمّل ملفك PDF بتصميم احترافي.</p>
 
@@ -490,8 +490,9 @@ footer{padding-block:30px;color:var(--ink-2);text-align:center;font-size:.92em}
 
   const name = () => $('heroName').value.trim() || 'اسمك هنا';
   const field = (k, v) => `<div class="mfield"><b>${k}:</b><span>${esc(v)}</span></div>`;
+  const hijri = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).formatToParts(new Date()).find((p) => p.type === 'year').value;
   const SPREADS = [
-    { cap: 'الغلاف', cover: true, R: () => `<div class="mcover"><div class="mcover-card"><h4>ملف إنجاز</h4><p class="hero-name">${esc(name())}</p><small>العام الدراسي 1448هـ</small></div></div>` },
+    { cap: 'الغلاف', cover: true, R: () => `<div class="mcover"><div class="mcover-card"><h4>ملف إنجاز</h4><p class="hero-name">${esc(name())}</p><small>العام الدراسي ${hijri}هـ</small></div></div>` },
     { cap: 'صفحة البسملة', cover: true, R: () => `<div class="mbsm"><div>بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ<small>وَقُل رَّبِّ زِدْنِي عِلْمًا</small></div></div>` },
     { cap: 'السيرة الذاتية · رؤية المملكة',
       R: () => `<div class="mt">السيرة الذاتية</div><div class="mfields">${field('الاسم', name())}${field('المؤهل', 'بكالوريوس')}${field('التخصص', 'صعوبات تعلم')}${field('المدرسة', 'المتوسطة 103')}</div>`,

@@ -1,4 +1,4 @@
-// القالب الافتراضي لملف الإنجاز — مبني على هيكل صفحات "ملف الإنجاز 1448".
+// القالب الافتراضي لملف الإنجاز — مبني على هيكل صفحات ملف الإنجاز اليدوي.
 // كل صفحة: { type, title, width: 'half' | 'full', blocks: [...] }
 // أنواع الصفحات: cover | opening | toc | section | backcover
 // أنواع الكتل: text | fields | table | images | links | quote
@@ -20,7 +20,7 @@ const TEMPLATE = {
   pages: [
     {
       type: 'cover', title: 'الغلاف', width: 'full',
-      blocks: [F([['العنوان', 'ملف إنجاز'], ['الاسم', ''], ['المدرسة', ''], ['إدارة التعليم', ''], ['العام الدراسي', '1448هـ']])],
+      blocks: [F([['العنوان', 'ملف إنجاز'], ['الاسم', ''], ['المدرسة', ''], ['إدارة التعليم', ''], ['العام الدراسي', '{YEAR}هـ']])],
     },
     {
       type: 'opening', title: 'البسملة', width: 'full',
@@ -171,10 +171,14 @@ function applyAccountName(data, name) {
   return data;
 }
 
+// السنة الهجرية الحالية (أم القرى) حتى يبقى القالب صالحًا كل عام
+const hijriYear = () => new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' })
+  .formatToParts(new Date()).find((p) => p.type === 'year').value;
+
 function createProjectData(name = '') {
-  const data = JSON.parse(JSON.stringify(TEMPLATE));
+  const data = JSON.parse(JSON.stringify(TEMPLATE).replaceAll('{YEAR}', hijriYear()));
   data.pages = withIds(data.pages);
   return applyAccountName(data, name);
 }
 
-module.exports = { createProjectData, applyAccountName, NAME_LABEL, newId };
+module.exports = { createProjectData, applyAccountName, NAME_LABEL, newId, hijriYear };
