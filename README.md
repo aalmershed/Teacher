@@ -30,7 +30,19 @@ npx playwright install chromium
 CHROMIUM_PATH=/path/to/chrome npm start
 ```
 
-## النشر بضغطة زر (Render) — الأسهل
+## النشر المجاني (Oracle Cloud) — بأمر واحد
+
+خادم Oracle المجاني دائمًا + رابط مجاني من sslip.io + شهادة HTTPS مجانية.
+
+1. أنشئ خادم Ubuntu 24.04 (Ampere A1، 2 معالج و12GB ذاكرة) وافتح المنفذين 80 و443 في Security List.
+2. ادخل على الخادم وشغّل:
+   ```bash
+   git clone https://github.com/aalmershed/Teacher.git injaz && cd injaz && bash setup.sh
+   ```
+   السكربت يسألك عن بريدك ومفتاحي ميسر، ثم يثبّت Docker ويفتح المنافذ ويشغّل الموقع.
+3. للتحديث لاحقًا: `cd injaz && bash update.sh`
+
+## النشر بضغطة زر (Render) (مدفوع)
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/aalmershed/Teacher)
 
