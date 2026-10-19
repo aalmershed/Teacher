@@ -64,12 +64,26 @@ function activate(userId, planId, provider, ref) {
 }
 
 // ---------- أكواد الخصم ----------
-const normCode = (c) => String(c || '').trim().toUpperCase();
+// الكود يقبل حروفًا عربية أو إنجليزية: الأرقام العربية تتحول لإنجليزية، وتُحذف الحركات والتطويل
+const normCode = (c) => String(c || '').trim()
+  .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+  .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+  .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+  .toUpperCase();
+const CODE_RE = /^[A-Z0-9\u0621-\u064A_-]{3,30}$/;
+// مفتاح المقارنة: يتسامح مع اختلافات الكتابة الشائعة (أ/إ/آ ← ا، ى ← ي، ة ← ه)
+const couponKey = (c) => normCode(c).replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي');
+function findCoupon(code) {
+  const exact = db.prepare('SELECT * FROM coupons WHERE code = ?').get(normCode(code));
+  if (exact) return exact;
+  const key = couponKey(code);
+  return key ? db.prepare('SELECT * FROM coupons').all().find((c) => couponKey(c.code) === key) : undefined;
+}
 const couponUses = (id) => db.prepare('SELECT COUNT(*) AS n FROM coupon_redemptions WHERE coupon_id = ?').get(id).n;
 
 // يتحقق من الكود لهذا المستخدم ويحسب السعر بعد الخصم لكل خطة
 function evaluateCoupon(code, userId) {
-  const c = db.prepare('SELECT * FROM coupons WHERE code = ?').get(normCode(code));
+  const c = findCoupon(code);
   if (!c || !c.active) return { ok: false, error: 'كود الخصم غير صحيح' };
   if (c.expires_at && c.expires_at < Date.now()) return { ok: false, error: 'انتهت صلاحية كود الخصم' };
   if (c.max_uses != null && couponUses(c.id) >= c.max_uses) return { ok: false, error: 'وصل كود الخصم للحد الأقصى من الاستخدام' };
@@ -224,4 +238,4 @@ function recordManualPayment(userId, planId, adminId) {
   return ref;
 }
 
-module.exports = { paymentMethods, samsungServiceId, PAY_METHODS, evaluateCoupon, couponUses, normCode, getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };
+module.exports = { findCoupon, CODE_RE, paymentMethods, samsungServiceId, PAY_METHODS, evaluateCoupon, couponUses, normCode, getPlans, getSetting, setSetting, cancelSubscription, setSubscriptionEnd, recordManualPayment, TRIAL_DAYS, PROVIDER, startTrial, activate, createCheckout, confirmMoyasarPayment, subscriptionInfo, isActive, currentSubscription };

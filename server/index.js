@@ -644,12 +644,12 @@ app.post('/api/admin/coupons', requireAdmin, (req, res) => {
     if (!m) return res.status(400).json({ error: 'تاريخ الانتهاء غير صحيح' });
     expiresAt = Date.UTC(+m[1], +m[2] - 1, +m[3], 20, 59, 59); // نهاية اليوم بتوقيت السعودية
   }
-  if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return res.status(400).json({ error: 'الكود من 3 إلى 30 حرفًا إنجليزيًا أو رقمًا (بدون مسافات)' });
+  if (!payments.CODE_RE.test(code)) return res.status(400).json({ error: 'الكود من 3 إلى 30 حرفًا عربيًا أو إنجليزيًا أو رقمًا (بدون مسافات)' });
   if (!Number.isFinite(value) || value <= 0 || (type === 'percent' && value > 100) || (type === 'amount' && value > 10000)) {
     return res.status(400).json({ error: type === 'percent' ? 'نسبة الخصم بين 1 و100' : 'مبلغ الخصم غير صحيح' });
   }
   if (maxUses != null && (!Number.isFinite(maxUses) || maxUses < 1)) return res.status(400).json({ error: 'عدد مرات الاستخدام غير صحيح' });
-  if (db.prepare('SELECT 1 FROM coupons WHERE code = ?').get(code)) return res.status(409).json({ error: 'هذا الكود موجود مسبقًا' });
+  if (payments.findCoupon(code)) return res.status(409).json({ error: 'هذا الكود موجود مسبقًا' });
   const info = db.prepare('INSERT INTO coupons (code, type, value, plans, max_uses, expires_at) VALUES (?, ?, ?, ?, ?, ?)').run(code, type, value, plans, maxUses, expiresAt);
   res.json({ coupon: couponView(db.prepare('SELECT * FROM coupons WHERE id = ?').get(Number(info.lastInsertRowid))) });
 });
