@@ -40,7 +40,7 @@ CHROMIUM_PATH=/path/to/chrome npm start
    git clone https://github.com/aalmershed/Teacher.git injaz && cd injaz && bash setup.sh
    ```
    السكربت يسألك عن بريدك ومفتاحي ميسر، ثم يثبّت Docker ويفتح المنافذ ويشغّل الموقع.
-3. للتحديث لاحقًا: `cd injaz && bash update.sh`
+3. **التحديث تلقائي:** السكربت يضيف مهمة تتحقق من GitHub كل 5 دقائق، وتحدّث الموقع عند وجود تعديلات جديدة (`auto-update.sh`، والسجل في `/var/log/injaz-update.log`). للتحديث الفوري يدويًا: `cd injaz && bash update.sh`
 
 ## النشر بضغطة زر (Render) (مدفوع)
 

@@ -73,8 +73,17 @@ fi
 say "تشغيل الموقع (أول مرة تأخذ 3–5 دقائق)..."
 sudo docker compose up -d --build
 
+# التحديث التلقائي: كل 5 دقائق يتحقق من GitHub ويحدّث الموقع إن وُجد جديد
+if [ "${NO_AUTO_UPDATE:-}" != "1" ]; then
+  say "تفعيل التحديث التلقائي من GitHub..."
+  chmod +x "$PWD/auto-update.sh"
+  echo "*/5 * * * * root $PWD/auto-update.sh >> /var/log/injaz-update.log 2>&1" | sudo tee /etc/cron.d/injaz-autoupdate >/dev/null
+  sudo chmod 644 /etc/cron.d/injaz-autoupdate
+fi
+
 DOMAIN=$(grep '^DOMAIN=' .env | cut -d= -f2-)
 say "تم! افتح موقعك: https://$DOMAIN"
+echo "التحديث التلقائي مفعّل: أي تعديل يُرفع على GitHub يظهر في الموقع خلال 5 دقائق (السجل: /var/log/injaz-update.log)."
 echo "إن لم يفتح مباشرة انتظر دقيقة حتى تصدر شهادة الأمان."
 echo "سجّل في الموقع بالبريد الذي أدخلته لتصبح مديرًا."
 if grep -q '^PAYMENT_PROVIDER=moyasar' .env; then
