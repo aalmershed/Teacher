@@ -154,7 +154,7 @@ function walletConfig(token) {
   let methods = paymentMethods();
   const sid = samsungServiceId();
   if (!sid) methods = methods.filter((m) => m !== 'samsungpay'); // سامسونج باي يحتاج Service ID من ميسر
-  const label = 'ملف إنجاز المعلم';
+  const label = 'MualimHub'; // ميسر تشترط أن يكون اسم المتجر في Apple Pay بحروف إنجليزية
   return {
     methods,
     ...(methods.includes('applepay') ? { apple_pay: { country: 'SA', label, validate_merchant_url: `${MOYASAR.apiBase}/v1/applepay/initiate` } } : {}),
