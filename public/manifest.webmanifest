@@ -1,6 +1,6 @@
 {
-  "name": "إنجاز — ملف إنجاز المعلم",
-  "short_name": "إنجاز",
+  "name": "ملف إنجاز المعلم",
+  "short_name": "ملف المعلم",
   "lang": "ar",
   "dir": "rtl",
   "start_url": "/app",

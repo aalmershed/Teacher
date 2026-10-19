@@ -36,7 +36,7 @@ let docTarget = null;
     $('pageArea').innerHTML = `<div class="empty-state"><div class="big">😕</div><p>${esc(e.message)}</p><a class="btn" href="/app">العودة لملفاتي</a></div>`;
     return;
   }
-  document.title = project.title + ' — إنجاز';
+  document.title = project.title + ' — ملف إنجاز المعلم';
   // الملفات القديمة: صفحة البسملة كان فيها عنوان الملف والاسم، صارت للآية فقط
   // الصيغة القديمة لبنود الشواهد (ملف واحد) ← قائمة ملفات برمز QR واحد للبند
   project.data.pages.forEach((p) => p.blocks.forEach((b) => {

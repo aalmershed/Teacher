@@ -4,7 +4,7 @@ const path = require('path');
 const QRCode = require('qrcode');
 const sanitizeHtml = require('sanitize-html');
 
-const BRAND = process.env.BRAND_NAME || 'إنجاز';
+const BRAND = process.env.BRAND_NAME || 'ملف إنجاز المعلم';
 
 const THEMES = {
   mint: { name: 'نعناعي', frame: '#7fb5ad', frame2: '#e8a173', panel: '#dcece8', accent: '#6c9f98', accent2: '#c98a5e', sand: '#e2cdb3', ink: '#3b3a36' },

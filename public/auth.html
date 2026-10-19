@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>الدخول — إنجاز</title>
+<title>الدخول — ملف إنجاز المعلم</title>
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#5f978f">
 <link rel="icon" href="/icon.svg">
@@ -19,7 +19,7 @@ body{min-height:100vh;display:grid;place-items:center;padding:24px 16px;backgrou
 </head>
 <body>
 <div class="card box">
-  <a class="logo" href="/"><span class="logo-mark">إن</span>إنجاز</a>
+  <a class="logo" href="/"><span class="logo-mark">م</span>ملف إنجاز المعلم</a>
   <div class="tabs"><a href="/login" id="tLogin">تسجيل الدخول</a><a href="/register" id="tReg">حساب جديد</a></div>
   <div class="err" id="err"></div>
   <form id="form" novalidate>
@@ -38,7 +38,7 @@ document.getElementById(isReg ? 'tReg' : 'tLogin').classList.add('on');
 document.querySelectorAll('.reg').forEach((el) => { el.style.display = isReg ? '' : 'none'; });
 document.getElementById('submit').textContent = isReg ? 'إنشاء الحساب' : 'دخول';
 document.getElementById('password').autocomplete = isReg ? 'new-password' : 'current-password';
-document.title = (isReg ? 'حساب جديد' : 'تسجيل الدخول') + ' — إنجاز';
+document.title = (isReg ? 'حساب جديد' : 'تسجيل الدخول') + ' — ملف إنجاز المعلم';
 if (isReg) api('GET', '/api/plans').then(({ trialDays }) => {
   document.getElementById('trialNote').textContent = trialDays > 0
     ? `تحصل على فترة تجريبية مجانية لمدة ${trialDays} أيام فور التسجيل.`

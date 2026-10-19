@@ -80,3 +80,5 @@ textarea.input{resize:vertical;min-height:2.6em}
 
 .empty-state{text-align:center;padding:56px 20px}
 .empty-state .big{font-size:3em;margin-bottom:6px}
+
+@media (max-width:480px){.logo{font-size:1.08em;gap:8px}.logo-mark{width:30px;height:30px}}
