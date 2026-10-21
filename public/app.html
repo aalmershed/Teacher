@@ -16,19 +16,28 @@ main{padding:28px 0 60px}
 .banner p{margin:0;flex:1;min-width:220px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
 .proj{overflow:hidden;display:flex;flex-direction:column}
-.thumb{aspect-ratio:1.6;background:var(--brand);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.14) 0 8px,transparent 8px 24px);display:grid;place-items:center;cursor:pointer;text-decoration:none}
+.thumb{aspect-ratio:297/210;background:var(--brand);background-image:repeating-linear-gradient(45deg,rgba(255,255,255,.14) 0 8px,transparent 8px 24px);display:grid;place-items:center;cursor:pointer;text-decoration:none}
 .thumb span{background:rgba(255,255,255,.93);padding:10px 20px;border-radius:12px;font-weight:800;color:var(--brand-d);max-width:80%;text-align:center}
 .proj .body{padding:14px 16px;flex:1}
 .proj h3{font-size:1.05em;margin:0 0 4px}
 .proj .acts{display:flex;gap:6px;padding:0 12px 14px;flex-wrap:wrap}
-.new-tile{border:2px dashed #c9d9d5;display:grid;place-items:center;min-height:250px;cursor:pointer;color:var(--brand-d);font-weight:800;background:#fbfdfc;transition:.15s}
+.new-tile{border:2px dashed #c9d9d5;display:grid;place-items:center;min-height:230px;cursor:pointer;color:var(--brand-d);font-weight:800;background:#fbfdfc;transition:.15s}
 .new-tile:hover{border-color:var(--brand);background:var(--brand-l)}
 .new-tile .plus{font-size:2.6em;line-height:1}
 .cthumb{aspect-ratio:297/210;position:relative;overflow:hidden;display:block;background:#f3f3f3}
 .cthumb iframe{position:absolute;top:0;right:0;width:1123px;height:794px;border:0;transform-origin:top right;pointer-events:none}
-.sec2{margin-top:44px;scroll-margin-top:80px}
-.sec2 h2{font-size:1.45em;margin:0}
-.new-tile.sm{min-height:200px}
+.page-t{font-size:1.7em;margin:0 0 18px}
+.sec{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:24px;scroll-margin-top:80px}
+.sec-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.sec-ic{width:46px;height:46px;border-radius:14px;background:var(--brand-l);display:grid;place-items:center;font-size:1.45em;flex:none}
+.sec-tx{flex:1;min-width:200px}
+.sec-tx h2{font-size:1.25em;margin:0}
+.sec-tx p{margin:2px 0 0;font-size:.92em}
+.sec .proj{box-shadow:none}
+.proj .acts{flex-wrap:nowrap;align-items:center}
+.ic-acts{margin-inline-start:auto;display:flex;gap:2px}
+.ic-acts .btn{padding:.3em .45em}
+@media (max-width:560px){.sec{padding:14px}.sec-head .btn{width:100%}.new-tile{min-height:90px}.new-tile .plus{font-size:1.8em}}
 .menu{position:relative}
 .menu-pop{position:absolute;top:110%;left:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-l);min-width:200px;padding:6px;display:none;z-index:30}
 .menu-pop.open{display:block}
@@ -61,21 +70,25 @@ main{padding:28px 0 60px}
     <a class="btn accent" href="/subscribe">اشترك الآن</a>
   </div>
 
-  <div class="head">
-    <h1>ملفاتي</h1>
-    <div class="spacer"></div>
-    <button class="btn primary lg" onclick="openNew()">＋ إنشاء ملف جديد</button>
-  </div>
+  <h1 class="page-t">ملفاتي</h1>
 
-  <div class="grid" id="grid"><div class="muted"><span class="spinner dark"></span></div></div>
+  <section class="sec" id="files">
+    <div class="sec-head">
+      <span class="sec-ic">📘</span>
+      <div class="sec-tx"><h2>ملفات الإنجاز</h2><p class="muted">ملف إنجاز كامل بجميع الصفحات، تعدّله متى شئت وتنزّله PDF.</p></div>
+      <button class="btn primary" onclick="openNew()">＋ ملف إنجاز جديد</button>
+    </div>
+    <div class="grid" id="grid"><div class="muted"><span class="spinner dark"></span></div></div>
+  </section>
 
-  <div class="head sec2" id="certs">
-    <h2>🏅 شهادات الشكر والتقدير</h2>
-    <div class="spacer"></div>
-    <button class="btn primary" onclick="newCert(this)">＋ شهادة جديدة</button>
-  </div>
-  <p class="muted" style="margin:-10px 0 18px">صمّم شهادات لطلابك بعدة تصاميم، وأنشئ شهادة لكل طالب دفعة واحدة بكتابة الأسماء.</p>
-  <div class="grid" id="certGrid"></div>
+  <section class="sec" id="certs">
+    <div class="sec-head">
+      <span class="sec-ic">🏅</span>
+      <div class="sec-tx"><h2>شهادات الشكر والتقدير</h2><p class="muted">صمّم شهادات لطلابك بعدة تصاميم، وأنشئ شهادة لكل طالب دفعة واحدة.</p></div>
+      <button class="btn primary" onclick="newCert(this)">＋ شهادة جديدة</button>
+    </div>
+    <div class="grid" id="certGrid"></div>
+  </section>
 </main>
 <script src="/assets/js/cert-render.js"></script>
 
@@ -156,13 +169,15 @@ async function loadProjects() {
       <div class="body"><h3>${esc(p.title)}</h3><div class="muted" style="font-size:.88em">آخر تعديل: ${fmtDate(p.updated_at)}</div></div>
       <div class="acts">
         <a class="btn sm primary" href="/editor/${p.id}">فتح وتعديل</a>
-        <a class="btn sm" href="/api/projects/${p.id}/preview" target="_blank">معاينة</a>
         <button class="btn sm" onclick="downloadPdf(${p.id}, this)">PDF</button>
-        <button class="btn sm ghost" title="نسخ" onclick="dup(${p.id})">⧉</button>
-        <button class="btn sm ghost danger" title="حذف" onclick="askDel(${p.id})">🗑</button>
+        <span class="ic-acts">
+          <a class="btn sm ghost" title="معاينة" href="/api/projects/${p.id}/preview" target="_blank">👁</a>
+          <button class="btn sm ghost" title="نسخ" onclick="dup(${p.id})">⧉</button>
+          <button class="btn sm ghost danger" title="حذف" onclick="askDel(${p.id})">🗑</button>
+        </span>
       </div>
     </div>`);
-  grid.innerHTML = `<div class="card new-tile" onclick="openNew()"><div style="text-align:center"><div class="plus">＋</div>إنشاء ملف جديد</div></div>` + tiles.join('');
+  grid.innerHTML = `<div class="card new-tile" onclick="openNew()"><div style="text-align:center"><div class="plus">＋</div>ملف إنجاز جديد</div></div>` + tiles.join('');
 }
 
 function openNew() {
@@ -204,7 +219,7 @@ async function loadCerts() {
   const { certificates } = await api('GET', '/api/certificates');
   certList = certificates;
   const grid = document.getElementById('certGrid');
-  grid.innerHTML = `<div class="card new-tile sm" onclick="newCert()"><div style="text-align:center"><div class="plus">＋</div>شهادة جديدة</div></div>` + certificates.map((c) => {
+  grid.innerHTML = `<div class="card new-tile" onclick="newCert()"><div style="text-align:center"><div class="plus">＋</div>شهادة جديدة</div></div>` + certificates.map((c) => {
     const n = (c.data.names || []).filter(Boolean).length;
     return `<div class="card proj">
       <a class="cthumb" href="/certificate/${c.id}"><iframe tabindex="-1" data-cert="${c.id}"></iframe></a>
@@ -212,8 +227,10 @@ async function loadCerts() {
       <div class="acts">
         <a class="btn sm primary" href="/certificate/${c.id}">فتح وتعديل</a>
         <button class="btn sm" onclick="downloadPdf(null, this, '/api/certificates/${c.id}/pdf', 'شهادة.pdf')">PDF</button>
-        <button class="btn sm ghost" title="نسخ" onclick="dupCert(${c.id})">⧉</button>
-        <button class="btn sm ghost danger" title="حذف" onclick="askDel(${c.id}, 'certificates')">🗑</button>
+        <span class="ic-acts">
+          <button class="btn sm ghost" title="نسخ" onclick="dupCert(${c.id})">⧉</button>
+          <button class="btn sm ghost danger" title="حذف" onclick="askDel(${c.id}, 'certificates')">🗑</button>
+        </span>
       </div></div>`;
   }).join('');
   grid.querySelectorAll('iframe[data-cert]').forEach((f) => {
