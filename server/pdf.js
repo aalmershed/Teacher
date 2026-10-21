@@ -3,6 +3,7 @@ const path = require('path');
 const { chromium } = require('playwright-core');
 const { renderProject, fontCss } = require('./render');
 const CertRender = require('./cert-render');
+const SheetRender = require('./sheet-render');
 const { db, DATA_DIR } = require('./db');
 
 function findChromium() {
@@ -62,8 +63,8 @@ async function projectToPdf(project, baseUrl) {
   }
 }
 
-async function certificateToPdf(cert) {
-  const html = CertRender.render(cert.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(cert.user_id) });
+// تحويل صفحة HTML جاهزة (بمقاسها المحدد في @page) إلى PDF
+async function htmlToPdf(html) {
   const page = await newPage();
   try {
     await page.setContent(html, { waitUntil: 'load' });
@@ -73,5 +74,7 @@ async function certificateToPdf(cert) {
     await page.close();
   }
 }
+const certificateToPdf = (cert) => htmlToPdf(CertRender.render(cert.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(cert.user_id) }));
+const sheetToPdf = (sheet) => htmlToPdf(SheetRender.render(sheet.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(sheet.user_id) }));
 
-module.exports = { projectToPdf, certificateToPdf };
+module.exports = { projectToPdf, certificateToPdf, sheetToPdf };

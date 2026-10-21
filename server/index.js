@@ -10,8 +10,9 @@ const QRCode = require('qrcode');
 const { db, DATA_DIR } = require('./db');
 const { createProjectData, applyAccountName, newId } = require('./template');
 const { renderProject, THEMES, cleanRich, fontCss } = require('./render');
-const { projectToPdf, certificateToPdf } = require('./pdf');
+const { projectToPdf, certificateToPdf, sheetToPdf } = require('./pdf');
 const CertRender = require('./cert-render');
+const SheetRender = require('./sheet-render');
 const payments = require('./payments');
 const seo = require('./seo');
 const mail = require('./mail');
@@ -372,65 +373,91 @@ app.get('/api/projects/:id/pdf', requireAuth, requireActive, async (req, res, ne
   } catch (e) { next(e); }
 });
 
-// ---------- شهادات الشكر والتقدير ----------
+// ---------- مستندات المعلم: الشهادات وكشوف المتابعة ----------
+// نفس العمليات لكل نوع: قائمة، إنشاء، قراءة، حفظ، نسخ، حذف، وتنزيل PDF (للمشتركين)
 const UPLOAD_ID = /^[a-f0-9]{24}$/;
-function cleanCert(userId, d) {
-  const x = CertRender.normalize(d);
+function logoCleaner(userId) {
   const owns = db.prepare('SELECT 1 FROM uploads WHERE id = ? AND user_id = ?');
-  const logo = (id) => (UPLOAD_ID.test(String(id || '')) && owns.get(id, userId) ? id : '');
-  const sign = (s) => ({ label: str(s.label, 60), name: str(s.name, 80) });
-  return {
-    design: x.design, title: str(x.title, 80), intro: str(x.intro, 300), lead: str(x.lead, 300),
-    names: x.names.slice(0, 300).map((n) => str(n, 80)), body: str(x.body, 1200), date: str(x.date, 80),
-    sign1: sign(x.sign1), sign2: sign(x.sign2), logoRight: logo(x.logoRight), logoLeft: logo(x.logoLeft),
+  return (id) => (UPLOAD_ID.test(String(id || '')) && owns.get(id, userId) ? id : '');
+}
+function docRoutes({ table, base, listKey, itemKey, meta, notFound, defTitle, clean, toPdf }) {
+  const load = (req, res) => {
+    const row = db.prepare(`SELECT * FROM ${table} WHERE id = ? AND user_id = ?`).get(Number(req.params.id), req.user.id);
+    if (!row) { res.status(404).json({ error: notFound }); return null; }
+    return { ...row, data: JSON.parse(row.data) };
   };
-}
-function loadCert(req, res) {
-  const row = db.prepare('SELECT * FROM certificates WHERE id = ? AND user_id = ?').get(Number(req.params.id), req.user.id);
-  if (!row) { res.status(404).json({ error: 'الشهادة غير موجودة' }); return null; }
-  return { ...row, data: JSON.parse(row.data) };
-}
-app.get('/api/certificates', requireAuth, (req, res) => {
-  const rows = db.prepare('SELECT * FROM certificates WHERE user_id = ? ORDER BY updated_at DESC').all(req.user.id);
-  res.json({ certificates: rows.map((r) => ({ id: r.id, title: r.title, updated_at: r.updated_at, data: JSON.parse(r.data) })), designs: CertRender.designs });
-});
-app.post('/api/certificates', requireAuth, (req, res) => {
-  if (db.prepare('SELECT COUNT(*) n FROM certificates WHERE user_id = ?').get(req.user.id).n >= 200) return res.status(400).json({ error: 'وصلت للحد الأقصى من الشهادات' });
-  const data = cleanCert(req.user.id, { design: req.body.design });
-  const info = db.prepare('INSERT INTO certificates (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, str(req.body.title, 100) || 'شهادة شكر وتقدير', JSON.stringify(data));
-  res.json({ id: Number(info.lastInsertRowid) });
-});
-app.get('/api/certificates/:id', requireAuth, (req, res) => {
-  const c = loadCert(req, res);
-  if (c) res.json({ certificate: { id: c.id, title: c.title, data: c.data, updated_at: c.updated_at }, designs: CertRender.designs });
-});
-app.put('/api/certificates/:id', requireAuth, (req, res) => {
-  const c = loadCert(req, res);
-  if (!c) return;
-  const data = cleanCert(req.user.id, req.body.data);
-  const title = str(req.body.title, 100) || c.title;
-  db.prepare("UPDATE certificates SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?").run(title, JSON.stringify(data), c.id);
-  res.json({ ok: true, data });
-});
-app.post('/api/certificates/:id/duplicate', requireAuth, (req, res) => {
-  const c = loadCert(req, res);
-  if (!c) return;
-  const info = db.prepare('INSERT INTO certificates (user_id, title, data) VALUES (?, ?, ?)').run(req.user.id, str(c.title + ' (نسخة)', 100), JSON.stringify(c.data));
-  res.json({ id: Number(info.lastInsertRowid) });
-});
-app.delete('/api/certificates/:id', requireAuth, (req, res) => {
-  db.prepare('DELETE FROM certificates WHERE id = ? AND user_id = ?').run(Number(req.params.id), req.user.id);
-  res.json({ ok: true });
-});
-app.get('/api/certificates/:id/pdf', requireAuth, requireActive, async (req, res, next) => {
-  try {
-    const c = loadCert(req, res);
+  app.get(base, requireAuth, (req, res) => {
+    const rows = db.prepare(`SELECT * FROM ${table} WHERE user_id = ? ORDER BY updated_at DESC`).all(req.user.id);
+    res.json({ [listKey]: rows.map((r) => ({ id: r.id, title: r.title, updated_at: r.updated_at, data: JSON.parse(r.data) })), ...meta });
+  });
+  app.post(base, requireAuth, (req, res) => {
+    if (db.prepare(`SELECT COUNT(*) n FROM ${table} WHERE user_id = ?`).get(req.user.id).n >= 200) return res.status(400).json({ error: 'وصلت للحد الأقصى' });
+    const info = db.prepare(`INSERT INTO ${table} (user_id, title, data) VALUES (?, ?, ?)`)
+      .run(req.user.id, str(req.body.title, 100) || defTitle, JSON.stringify(clean(req.user.id, req.body.data || {})));
+    res.json({ id: Number(info.lastInsertRowid) });
+  });
+  app.get(`${base}/:id`, requireAuth, (req, res) => {
+    const c = load(req, res);
+    if (c) res.json({ [itemKey]: { id: c.id, title: c.title, data: c.data, updated_at: c.updated_at }, ...meta });
+  });
+  app.put(`${base}/:id`, requireAuth, (req, res) => {
+    const c = load(req, res);
     if (!c) return;
-    const pdf = await certificateToPdf(c);
-    const name = encodeURIComponent((c.title || 'شهادة').replace(/[\\/:*?"<>|]/g, '-') + '.pdf');
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${name}` });
-    res.send(Buffer.from(pdf));
-  } catch (e) { next(e); }
+    const data = clean(req.user.id, req.body.data);
+    db.prepare(`UPDATE ${table} SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?`).run(str(req.body.title, 100) || c.title, JSON.stringify(data), c.id);
+    res.json({ ok: true, data });
+  });
+  app.post(`${base}/:id/duplicate`, requireAuth, (req, res) => {
+    const c = load(req, res);
+    if (!c) return;
+    const info = db.prepare(`INSERT INTO ${table} (user_id, title, data) VALUES (?, ?, ?)`).run(req.user.id, str(c.title + ' (نسخة)', 100), JSON.stringify(c.data));
+    res.json({ id: Number(info.lastInsertRowid) });
+  });
+  app.delete(`${base}/:id`, requireAuth, (req, res) => {
+    db.prepare(`DELETE FROM ${table} WHERE id = ? AND user_id = ?`).run(Number(req.params.id), req.user.id);
+    res.json({ ok: true });
+  });
+  app.get(`${base}/:id/pdf`, requireAuth, requireActive, async (req, res, next) => {
+    try {
+      const c = load(req, res);
+      if (!c) return;
+      const pdf = await toPdf(c);
+      const name = encodeURIComponent((c.title || defTitle).replace(/[\\/:*?"<>|]/g, '-') + '.pdf');
+      res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${name}` });
+      res.send(Buffer.from(pdf));
+    } catch (e) { next(e); }
+  });
+}
+
+docRoutes({
+  table: 'certificates', base: '/api/certificates', listKey: 'certificates', itemKey: 'certificate',
+  meta: { designs: CertRender.designs }, notFound: 'الشهادة غير موجودة', defTitle: 'شهادة شكر وتقدير', toPdf: certificateToPdf,
+  clean: (userId, d) => {
+    const x = CertRender.normalize(d);
+    const logo = logoCleaner(userId);
+    const sign = (s) => ({ label: str(s.label, 60), name: str(s.name, 80) });
+    return {
+      design: x.design, title: str(x.title, 80), intro: str(x.intro, 300), lead: str(x.lead, 300),
+      names: x.names.slice(0, 300).map((n) => str(n, 80)), body: str(x.body, 1200), date: str(x.date, 80),
+      sign1: sign(x.sign1), sign2: sign(x.sign2), logoRight: logo(x.logoRight), logoLeft: logo(x.logoLeft),
+    };
+  },
+});
+
+docRoutes({
+  table: 'sheets', base: '/api/sheets', listKey: 'sheets', itemKey: 'sheet',
+  meta: { themes: SheetRender.themes, defaultGroups: SheetRender.DEFAULT_GROUPS }, notFound: 'الكشف غير موجود', defTitle: 'كشف متابعة الطلاب', toPdf: sheetToPdf,
+  clean: (userId, d) => {
+    const x = SheetRender.normalize(d);
+    const logo = logoCleaner(userId);
+    return {
+      theme: x.theme, title: str(x.title, 80), line1: str(x.line1, 120), line2: str(x.line2, 120), school: str(x.school, 80),
+      grade: str(x.grade, 40), section: str(x.section, 40), term: str(x.term, 40), subject: str(x.subject, 60), teacher: str(x.teacher, 80), year: str(x.year, 30),
+      names: x.names.slice(0, 500).map((n) => str(n, 80)), rows: x.rows,
+      groups: x.groups.map((g) => ({ title: str(g.title, 60), subs: g.subs.map((sb) => ({ title: str(sb.title, 60), max: sb.max, boxes: sb.boxes })) })),
+      logoRight: logo(x.logoRight), logoLeft: logo(x.logoLeft),
+    };
+  },
 });
 
 // ---------- الصور ----------
@@ -774,6 +801,8 @@ const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot':
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
 app.get('/editor/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'editor.html')));
 app.get('/certificate/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'certificate.html')));
+app.get('/sheet/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'sheet.html')));
+app.get('/assets/js/sheet-render.js', (_req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'sheet-render.js')));
 app.get('/assets/fonts.css', (_req, res) => res.type('text/css').set('Cache-Control', 'public, max-age=86400').send(fontCss(false)));
 app.get('/assets/js/cert-render.js', (_req, res) => res.type('application/javascript').sendFile(path.join(__dirname, 'cert-render.js')));
 

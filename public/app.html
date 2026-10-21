@@ -89,8 +89,18 @@ main{padding:28px 0 60px}
     </div>
     <div class="grid" id="certGrid"></div>
   </section>
+
+  <section class="sec" id="sheets">
+    <div class="sec-head">
+      <span class="sec-ic">📋</span>
+      <div class="sec-tx"><h2>كشوف متابعة الطلاب</h2><p class="muted">كشف درجات جاهز للطباعة بأسماء طلابك وتوزيع الدرجات اللي تختاره.</p></div>
+      <button class="btn primary" onclick="newSheet(this)">＋ كشف جديد</button>
+    </div>
+    <div class="grid" id="sheetGrid"></div>
+  </section>
 </main>
 <script src="/assets/js/cert-render.js"></script>
+<script src="/assets/js/sheet-render.js"></script>
 
 <div class="modal-bg" id="newModal">
   <div class="modal">
@@ -149,6 +159,7 @@ async function load() {
   document.getElementById('adminLink').style.display = user.isAdmin ? 'block' : 'none';
   await loadProjects();
   loadCerts();
+  loadSheets();
   const { themes } = await api('GET', '/api/themes');
   document.getElementById('themePick').innerHTML = themes.map((t) => `
     <div class="theme-opt ${t.id === selTheme ? 'sel' : ''}" data-id="${t.id}">
@@ -203,14 +214,14 @@ async function dup(id) {
 let delKind = 'projects', certList = [];
 function askDel(id, kind = 'projects') {
   delId = id; delKind = kind;
-  const list = kind === 'certificates' ? certList : projectList;
+  const list = kind === 'certificates' ? certList : kind === 'sheets' ? sheetList : projectList;
   document.getElementById('delName').textContent = list.find((p) => p.id === id)?.title || '';
   openModal('delModal');
 }
 document.getElementById('delConfirm').onclick = async () => {
   try {
     await api('DELETE', `/api/${delKind}/${delId}`); closeModal('delModal'); toast('تم الحذف');
-    delKind === 'certificates' ? loadCerts() : loadProjects();
+    ({ certificates: loadCerts, sheets: loadSheets })[delKind]?.() ?? loadProjects();
   } catch (e) { toast(e.message, 'err'); }
 };
 
@@ -238,6 +249,41 @@ async function loadCerts() {
     f.srcdoc = CertRender.render(c.data, { fontCss: '@import url(/assets/fonts.css);', imageUrl: (u) => '/api/uploads/' + u, index: 0, screen: true });
   });
   fitCertThumbs();
+}
+// ---------- كشوف المتابعة ----------
+let sheetList = [];
+async function loadSheets() {
+  const { sheets } = await api('GET', '/api/sheets');
+  sheetList = sheets;
+  const grid = document.getElementById('sheetGrid');
+  grid.innerHTML = `<div class="card new-tile" onclick="newSheet()"><div style="text-align:center"><div class="plus">＋</div>كشف جديد</div></div>` + sheets.map((c) => {
+    const n = (c.data.names || []).length, cls = [c.data.grade, c.data.section].filter(Boolean).join(' · ');
+    return `<div class="card proj">
+      <a class="cthumb" href="/sheet/${c.id}"><iframe tabindex="-1" data-sheet="${c.id}"></iframe></a>
+      <div class="body"><h3>${esc(c.title)}</h3><div class="muted" style="font-size:.88em">${cls ? esc(cls) + ' · ' : ''}${n ? n + ' طالب · ' : ''}آخر تعديل: ${fmtDate(c.updated_at)}</div></div>
+      <div class="acts">
+        <a class="btn sm primary" href="/sheet/${c.id}">فتح وتعديل</a>
+        <button class="btn sm" onclick="downloadPdf(null, this, '/api/sheets/${c.id}/pdf', 'كشف-متابعة.pdf')">PDF</button>
+        <span class="ic-acts">
+          <button class="btn sm ghost" title="نسخ" onclick="dupSheet(${c.id})">⧉</button>
+          <button class="btn sm ghost danger" title="حذف" onclick="askDel(${c.id}, 'sheets')">🗑</button>
+        </span>
+      </div></div>`;
+  }).join('');
+  grid.querySelectorAll('iframe[data-sheet]').forEach((f) => {
+    const c = sheets.find((x) => x.id === +f.dataset.sheet);
+    f.srcdoc = SheetRender.render(c.data, { fontCss: '@import url(/assets/fonts.css);', imageUrl: (u) => '/api/uploads/' + u, page: 0, screen: true });
+  });
+  fitCertThumbs();
+}
+async function newSheet(btn) {
+  if (btn) btn.disabled = true;
+  const year = new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).formatToParts(new Date()).find((p) => p.type === 'year').value;
+  try { const { id } = await api('POST', '/api/sheets', { data: { year: year + 'هـ' } }); location.href = '/sheet/' + id; }
+  catch (e) { toast(e.message, 'err'); if (btn) btn.disabled = false; }
+}
+async function dupSheet(id) {
+  try { await api('POST', `/api/sheets/${id}/duplicate`); toast('تم نسخ الكشف', 'ok'); loadSheets(); } catch (e) { toast(e.message, 'err'); }
 }
 function fitCertThumbs() { document.querySelectorAll('.cthumb').forEach((t) => { t.firstElementChild.style.transform = `scale(${t.clientWidth / 1123})`; }); }
 addEventListener('resize', fitCertThumbs);
