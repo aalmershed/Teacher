@@ -40,19 +40,54 @@
     logoRight: '', logoLeft: '',
   };
 
+  // معرّفات ثابتة للطلاب والبنود حتى تبقى الدرجات مرتبطة بأصحابها عند الترتيب أو التعديل
+  const newId = () => Math.random().toString(36).slice(2, 10);
+  const ID = /^[a-z0-9]{4,12}$/;
+  const MARKS = ['', '✓', '✗'];
+
   function normalize(d) {
     const x = Object.assign({}, DEFAULTS, d || {});
     if (!THEMES[x.theme]) x.theme = DEFAULTS.theme;
     x.rows = num(x.rows, 8, 30, 15);
     x.names = (Array.isArray(x.names) ? x.names : String(x.names || '').split('\n')).map((n) => String(n).trim()).filter(Boolean);
+    const sids = Array.isArray(x.sids) ? x.sids : [];
+    const seen = new Set();
+    x.sids = x.names.map((_, i) => { let id = String(sids[i] || ''); if (!ID.test(id) || seen.has(id)) id = newId(); seen.add(id); return id; });
     const groups = Array.isArray(x.groups) && x.groups.length ? x.groups : DEFAULT_GROUPS;
     x.groups = groups.slice(0, 8).map((g) => ({
       title: String(g.title ?? ''),
-      subs: (Array.isArray(g.subs) && g.subs.length ? g.subs : [{ title: '', max: 10, boxes: 4 }]).slice(0, 4).map((s) => ({
-        title: String(s.title ?? ''), max: num(s.max, 0, 100, 10), boxes: num(s.boxes, 0, 12, 4),
-      })),
+      subs: (Array.isArray(g.subs) && g.subs.length ? g.subs : [{ title: '', max: 10, boxes: 4 }]).slice(0, 4).map((s) => {
+        let id = String(s.id || ''); if (!ID.test(id) || seen.has(id)) id = newId(); seen.add(id);
+        return { id, title: String(s.title ?? ''), max: num(s.max, 0, 100, 10), boxes: num(s.boxes, 0, 12, 4) };
+      }),
     }));
+    // الدرجات: { معرف الطالب: { معرف البند: { s: الدرجة, m: [علامات الخانات] } } } — نحتفظ فقط بما يطابق طلابًا وبنودًا موجودة
+    const subs = {}; x.groups.forEach((g) => g.subs.forEach((sb) => { subs[sb.id] = sb; }));
+    const src = x.grades && typeof x.grades === 'object' ? x.grades : {};
+    x.grades = {};
+    x.sids.forEach((sid) => {
+      const row = src[sid]; if (!row || typeof row !== 'object') return;
+      const out = {};
+      Object.keys(row).forEach((k) => {
+        const sb = subs[k], v = row[k]; if (!sb || !v || typeof v !== 'object') return;
+        const sc = v.s === '' || v.s == null ? null : Number(v.s);
+        const cell = {};
+        if (sc != null && Number.isFinite(sc)) cell.s = Math.min(sb.max, Math.max(0, Math.round(sc * 100) / 100));
+        const m = (Array.isArray(v.m) ? v.m : []).slice(0, sb.boxes).map((c) => (MARKS.includes(c) ? c : ''));
+        if (m.some(Boolean)) cell.m = m;
+        if (Object.keys(cell).length) out[k] = cell;
+      });
+      if (Object.keys(out).length) x.grades[sid] = out;
+    });
+    x.setup = !!x.setup;
     return x;
+  }
+  // مجموع الطالب (null إذا لم تُرصد له أي درجة)
+  function studentTotal(d, sid) {
+    const row = d.grades[sid]; if (!row) return null;
+    let t = 0, any = false;
+    d.groups.forEach((g) => g.subs.forEach((sb) => { const c = row[sb.id]; if (c && c.s != null) { t += c.s; any = true; } }));
+    return any ? Math.round(t * 100) / 100 : null;
   }
   const groupMax = (g) => g.subs.reduce((a, s) => a + s.max, 0);
   const totalMax = (d) => d.groups.reduce((a, g) => a + groupMax(g), 0);
@@ -81,7 +116,10 @@ tbody tr:nth-child(odd) td{background:${t.zebra}}
 tbody tr:nth-child(odd) td.c{background:${t.cell}}
 td.n{text-align:right;padding:0 2mm;font-size:3.6mm;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
 td.i{font-size:3mm;background:${t.head}!important}
-td.box{border-left-width:.12mm;border-right-width:.12mm}
+td.box{border-left-width:.12mm;border-right-width:.12mm;font-size:3mm;color:#2d7a52;font-weight:700}
+td.box.no{color:#c0392b}
+td.v{font-size:3.6mm;font-weight:700}
+td.tot{font-size:3.9mm;font-weight:800}
 .foot{position:absolute;bottom:4mm;left:6mm;right:6mm;height:9mm;background:${t.band};border-radius:2mm;display:flex;align-items:center;justify-content:space-between;padding:0 6mm;color:${t.bandInk};font-weight:800;font-size:4mm}
 .foot small{font-weight:500;font-size:3.2mm}
 .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:800 12mm 'Tajawal',sans-serif;color:rgba(0,0,0,.08);transform:rotate(-20deg);pointer-events:none;white-space:nowrap;z-index:5}`;
@@ -114,9 +152,16 @@ td.box{border-left-width:.12mm;border-right-width:.12mm}
     let body = '';
     for (let i = 0; i < d.rows; i++) {
       const n = names[i] || '';
+      const sid = n ? d.sids[start + i] : null;
+      const row = (!opts.blank && sid && d.grades[sid]) || {};
       let cells = `<td class="i">${n || names.length === 0 || start + i < (opts.totalNames || 0) ? start + i + 1 : ''}</td><td class="n">${esc(n)}</td>`;
-      d.groups.forEach((g) => g.subs.forEach((s) => { cells += '<td class="box"></td>'.repeat(s.boxes) + '<td class="c"></td>'; }));
-      cells += '<td class="c"></td>';
+      d.groups.forEach((g) => g.subs.forEach((s) => {
+        const c = row[s.id] || {};
+        for (let k = 0; k < s.boxes; k++) { const m = (c.m || [])[k] || ''; cells += `<td class="box${m === '✗' ? ' no' : ''}">${m}</td>`; }
+        cells += `<td class="c v">${c.s != null ? c.s : ''}</td>`;
+      }));
+      const tot = !opts.blank && sid ? studentTotal(d, sid) : null;
+      cells += `<td class="c v tot">${tot != null ? tot : ''}</td>`;
       body += `<tr style="height:${rowH.toFixed(2)}mm">${cells}</tr>`;
     }
     const meta = [['الصف', d.grade], ['الفصل', d.section], ['المادة', d.subject], ['الفصل الدراسي', d.term], ['المعلم', d.teacher]]
@@ -151,5 +196,5 @@ td.box{border-left-width:.12mm;border-right-width:.12mm}
 
   const pageCount = (data) => { const d = normalize(data); return Math.max(1, Math.ceil(d.names.length / d.rows)); };
   const themes = Object.keys(THEMES).map((id) => ({ id, name: THEMES[id].name, colors: [THEMES[id].dark, THEMES[id].head, THEMES[id].band] }));
-  return { render, normalize, pageCount, totalMax, groupMax, DEFAULTS, DEFAULT_GROUPS, themes, deg, W, H };
+  return { render, normalize, studentTotal, newId, MARKS, THEMES, pageCount, totalMax, groupMax, DEFAULTS, DEFAULT_GROUPS, themes, deg, W, H };
 }));

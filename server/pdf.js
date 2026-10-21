@@ -75,6 +75,6 @@ async function htmlToPdf(html) {
   }
 }
 const certificateToPdf = (cert) => htmlToPdf(CertRender.render(cert.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(cert.user_id) }));
-const sheetToPdf = (sheet) => htmlToPdf(SheetRender.render(sheet.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(sheet.user_id) }));
+const sheetToPdf = (sheet, q = {}) => htmlToPdf(SheetRender.render(sheet.data, { fontCss: fontCss(true), imageUrl: imageDataUrl(sheet.user_id), blank: q.blank === '1' }));
 
 module.exports = { projectToPdf, certificateToPdf, sheetToPdf };

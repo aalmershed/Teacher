@@ -421,7 +421,7 @@ function docRoutes({ table, base, listKey, itemKey, meta, notFound, defTitle, cl
     try {
       const c = load(req, res);
       if (!c) return;
-      const pdf = await toPdf(c);
+      const pdf = await toPdf(c, req.query);
       const name = encodeURIComponent((c.title || defTitle).replace(/[\\/:*?"<>|]/g, '-') + '.pdf');
       res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename*=UTF-8''${name}` });
       res.send(Buffer.from(pdf));
@@ -453,8 +453,9 @@ docRoutes({
     return {
       theme: x.theme, title: str(x.title, 80), line1: str(x.line1, 120), line2: str(x.line2, 120), school: str(x.school, 80),
       grade: str(x.grade, 40), section: str(x.section, 40), term: str(x.term, 40), subject: str(x.subject, 60), teacher: str(x.teacher, 80), year: str(x.year, 30),
-      names: x.names.slice(0, 500).map((n) => str(n, 80)), rows: x.rows,
-      groups: x.groups.map((g) => ({ title: str(g.title, 60), subs: g.subs.map((sb) => ({ title: str(sb.title, 60), max: sb.max, boxes: sb.boxes })) })),
+      names: x.names.slice(0, 500).map((n) => str(n, 80)), sids: x.sids.slice(0, 500), rows: x.rows,
+      groups: x.groups.map((g) => ({ title: str(g.title, 60), subs: g.subs.map((sb) => ({ id: sb.id, title: str(sb.title, 60), max: sb.max, boxes: sb.boxes })) })),
+      grades: x.grades, setup: x.setup,
       logoRight: logo(x.logoRight), logoLeft: logo(x.logoLeft),
     };
   },
