@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# تثبيت منصة "ملف إنجاز المعلم" على خادم Ubuntu بأمر واحد:
+# تثبيت منصة "مركز المعلم" على خادم Ubuntu بأمر واحد:
 #   bash setup.sh
 # يسألك عن بريدك ومفاتيح ميسر، ثم يثبّت Docker ويفتح المنافذ ويشغّل الموقع مع شهادة HTTPS.
 set -euo pipefail
@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 say() { printf '\n\033[1;32m%s\033[0m\n' "$*"; }
 ask() { local p="$1" v; read -r -p "$p" v; printf '%s' "$v"; }
 
-say "== إعداد منصة ملف إنجاز المعلم =="
+say "== إعداد منصة مركز المعلم =="
 
 if [ -f .env ] && [ "${RECONFIGURE:-}" != "1" ]; then
   echo "ملف الإعدادات .env موجود مسبقًا — سأستخدمه (لإعادة الإعداد: RECONFIGURE=1 bash setup.sh)"

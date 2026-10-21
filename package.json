@@ -1,7 +1,7 @@
 {
   "name": "injaz-teacher-portfolio",
   "version": "1.0.0",
-  "description": "منصة ملف إنجاز المعلم",
+  "description": "منصة مركز المعلم",
   "main": "server/index.js",
   "scripts": {
     "start": "node --disable-warning=ExperimentalWarning server/index.js",

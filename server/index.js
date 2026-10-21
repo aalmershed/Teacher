@@ -549,7 +549,7 @@ main{max-width:720px;margin:-30px auto 40px;padding:0 16px;display:grid;gap:10px
 .go{grid-row:1 / 3;grid-column:3;color:#467a73;font-weight:800;white-space:nowrap}
 footer{text-align:center;color:#6c7471;font-size:.85em;padding-bottom:30px}
 </style></head><body><header><small>${escHtml(bundle.teacher)}</small><h1>${escHtml(bundle.title || 'الشواهد')}</h1><small>${files.length} ملفات</small></header>
-<main>${cards || '<p style="text-align:center">لا توجد ملفات في هذا البند حاليًا.</p>'}</main><footer>ملف إنجاز المعلم</footer></body></html>`);
+<main>${cards || '<p style="text-align:center">لا توجد ملفات في هذا البند حاليًا.</p>'}</main><footer>مركز المعلم</footer></body></html>`);
 });
 
 app.get('/api/qr', async (req, res) => {

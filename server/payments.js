@@ -151,7 +151,7 @@ function createCheckout(userId, planId, baseUrl, couponCode) {
         publishable_api_key: MOYASAR.publishableKey,
         amount,
         currency: 'SAR',
-        description: `${plan.name}${coupon ? ' (بعد الخصم)' : ''} — ملف إنجاز المعلم`,
+        description: `${plan.name}${coupon ? ' (بعد الخصم)' : ''} — مركز المعلم`,
         callback_url: `${baseUrl}/payments/moyasar/callback`,
         ...walletConfig(token),
         supported_networks: ['mada', 'visa', 'mastercard'],

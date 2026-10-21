@@ -1,5 +1,5 @@
 // أدوات مشتركة بين صفحات المنصة
-const BRAND = 'ملف إنجاز المعلم';
+const BRAND = 'مركز المعلم';
 
 async function api(method, url, body) {
   const opts = { method, headers: {}, credentials: 'same-origin' };
