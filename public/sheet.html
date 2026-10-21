@@ -103,8 +103,12 @@ td.tt{background:var(--gc)!important;font-weight:800;min-width:58px;font-size:1.
     <div class="themes" id="themes"></div>
 
     <h3>رأس الكشف</h3>
-    <div class="field"><label for="f-line1">السطر الأول</label><input class="input" id="f-line1" maxlength="120" placeholder="الإدارة العامة للتعليم بمنطقة ..."></div>
-    <div class="field"><label for="f-line2">السطر الثاني</label><input class="input" id="f-line2" maxlength="120" placeholder="مكتب التعليم ..."></div>
+    <div class="field"><label for="dept">إدارة التعليم</label>
+      <select class="input" id="dept"></select>
+      <input class="input" id="deptOther" maxlength="120" placeholder="اكتب اسم إدارة التعليم" style="margin-top:6px" hidden></div>
+    <div class="field"><label for="office">مكتب التعليم</label>
+      <select class="input" id="office"></select>
+      <input class="input" id="officeOther" maxlength="120" placeholder="اكتب اسم مكتب التعليم" style="margin-top:6px" hidden></div>
     <div class="field"><label for="f-school">اسم المدرسة</label><input class="input" id="f-school" maxlength="80"></div>
     <div class="row2">
       <div class="field"><label for="f-title">عنوان الكشف</label><input class="input" id="f-title" maxlength="80"></div>
@@ -173,6 +177,7 @@ td.tt{background:var(--gc)!important;font-weight:800;min-width:58px;font-size:1.
 
 <script src="/assets/js/common.js"></script>
 <script src="/assets/js/sheet-render.js"></script>
+<script src="/assets/js/edu-offices.js"></script>
 <script>
 const id = location.pathname.split('/').pop();
 const $ = (x) => document.getElementById(x);
@@ -269,9 +274,45 @@ $('logoFile').onchange = async (e) => {
 };
 
 // الحقول النصية
-const FIELDS = ['line1', 'line2', 'school', 'title', 'year', 'grade', 'section', 'term', 'subject', 'teacher'];
+// إدارة التعليم ← مكاتبها (مع خيار «أخرى» للكتابة اليدوية)
+const OTHER = '__other';
+const clean = (v) => (/\.{3,}/.test(v || '') ? '' : v || ''); // تجاهل النص المؤقت القديم ذي النقاط
+function fillOffices() {
+  const list = EDU_OFFICES[data.line1] || [];
+  const v = clean(data.line2);
+  $('office').innerHTML = `<option value="">${data.line1 ? 'اختر مكتب التعليم' : 'اختر الإدارة أولًا'}</option>` + list.map((o) => `<option>${esc(o)}</option>`).join('') + `<option value="${OTHER}">أخرى (اكتب يدويًا)</option>`;
+  const known = list.includes(v);
+  $('office').value = known ? v : v ? OTHER : '';
+  $('officeOther').hidden = !(v && !known); $('officeOther').value = known ? '' : v;
+}
+function fillDepts() {
+  const v = clean(data.line1);
+  $('dept').innerHTML = '<option value="">اختر إدارة التعليم</option>' + Object.keys(EDU_OFFICES).map((d) => `<option>${esc(d)}</option>`).join('') + `<option value="${OTHER}">أخرى (اكتب يدويًا)</option>`;
+  const known = !!EDU_OFFICES[v];
+  $('dept').value = known ? v : v ? OTHER : '';
+  $('deptOther').hidden = !(v && !known); $('deptOther').value = known ? '' : v;
+  fillOffices();
+}
+$('dept').onchange = () => {
+  const v = $('dept').value;
+  $('deptOther').hidden = v !== OTHER;
+  data.line1 = v === OTHER ? $('deptOther').value : v;
+  data.line2 = ''; fillOffices(); changed();
+  if (v === OTHER) $('deptOther').focus();
+};
+$('office').onchange = () => {
+  const v = $('office').value;
+  $('officeOther').hidden = v !== OTHER;
+  data.line2 = v === OTHER ? $('officeOther').value : v; changed();
+  if (v === OTHER) $('officeOther').focus();
+};
+$('deptOther').oninput = () => { data.line1 = $('deptOther').value; changed(); };
+$('officeOther').oninput = () => { data.line2 = $('officeOther').value; changed(); };
+
+const FIELDS = ['school', 'title', 'year', 'grade', 'section', 'term', 'subject', 'teacher'];
 function fillForm() {
   FIELDS.forEach((k) => { $('f-' + k).value = data[k] || ''; });
+  fillDepts();
   $('f-names').value = data.names.join('\n');
   $('f-rows').value = data.rows;
 }

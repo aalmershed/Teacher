@@ -30,8 +30,8 @@
   const DEFAULTS = {
     theme: 'green',
     title: 'كشف متابعة الطلاب',
-    line1: 'الإدارة العامة للتعليم بمنطقة ............',
-    line2: 'مكتب التعليم ............',
+    line1: '',
+    line2: '',
     school: 'اسم المدرسة',
     grade: '', section: '', term: '', subject: '', teacher: '', year: '',
     names: [],
