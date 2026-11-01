@@ -84,7 +84,7 @@ export function fmtDate(v: string | number) {
 }
 
 const styles = StyleSheet.create({
-  text: { color: colors.ink, fontSize: 15, textAlign: 'left' },
+  text: { color: colors.ink, fontSize: 15, textAlign: 'auto' },
   card: {
     backgroundColor: colors.card, borderRadius: radius, padding: 16, borderWidth: 1, borderColor: colors.line,
     shadowColor: '#1e2826', shadowOpacity: 0.06, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 1,
