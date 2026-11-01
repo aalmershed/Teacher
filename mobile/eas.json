@@ -15,6 +15,7 @@
   "submit": {
     "production": {
       "ios": {
+        "ascAppId": "6829433776",
         "ascApiKeyPath": "C:\\Users\\Abdulaiziz\\.apple-asc\\AuthKey_V3DVNRA5X2.p8",
         "ascApiKeyIssuerId": "b9a2fcee-9d53-48cd-a10c-46fcebe0de03",
         "ascApiKeyId": "V3DVNRA5X2"
