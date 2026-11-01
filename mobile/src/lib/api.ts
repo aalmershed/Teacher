@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 // رابط الخادم: الموقع المنشور افتراضيًا، ويمكن تغييره للتجربة بـ EXPO_PUBLIC_API_URL
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://mualimhub.com').replace(/\/$/, '');
@@ -6,14 +7,20 @@ export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://mualimhub.co
 const TOKEN_KEY = 'session-token';
 let token: string | null = null;
 
+// الجوال يحفظ الرمز في Keychain الآمن؛ نسخة المتصفح (للتجربة أثناء التطوير فقط) تحفظه في localStorage
+const web = Platform.OS === 'web';
+
 export async function loadToken() {
-  token = await SecureStore.getItemAsync(TOKEN_KEY);
+  token = web ? globalThis.localStorage?.getItem(TOKEN_KEY) ?? null : await SecureStore.getItemAsync(TOKEN_KEY);
   return token;
 }
 
 export async function saveToken(value: string | null) {
   token = value;
-  if (value) await SecureStore.setItemAsync(TOKEN_KEY, value);
+  if (web) {
+    if (value) globalThis.localStorage?.setItem(TOKEN_KEY, value);
+    else globalThis.localStorage?.removeItem(TOKEN_KEY);
+  } else if (value) await SecureStore.setItemAsync(TOKEN_KEY, value);
   else await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
 

@@ -1,3 +1,6 @@
+// React Compiler كان ينقل دالة القراءة خارج createDocStore فيضيع المتغير state ويتعطل التطبيق؛ هذا الملف ليس مكوّنًا فنستثنيه
+'use no memo';
+
 import { produce, type Draft } from 'immer';
 import { useSyncExternalStore } from 'react';
 import { Alert, AppState } from 'react-native';
@@ -30,7 +33,8 @@ export function createDocStore<D, M extends object = Record<never, never>>({ bas
     listeners.forEach((l) => l());
   };
   const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
-  const useStore = () => useSyncExternalStore(subscribe, () => state);
+  const getSnapshot = () => state;
+  const useStore = () => useSyncExternalStore(subscribe, getSnapshot);
 
   async function open(id: number) {
     opened++;

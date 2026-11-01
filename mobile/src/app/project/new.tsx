@@ -4,9 +4,8 @@ import { ScrollView } from 'react-native';
 import { ThemePicker } from '@/components/editor-common';
 import { Button, Card, ErrorBox, Input, Text } from '@/components/ui';
 import { api } from '@/lib/api';
+import { hijriYear } from '@/lib/dates';
 
-const hijriYear = () =>
-  new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).formatToParts(new Date()).find((p) => p.type === 'year')?.value || '';
 
 export default function NewProject() {
   const [title, setTitle] = useState(`ملف إنجاز ${hijriYear()}`);

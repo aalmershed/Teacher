@@ -2,11 +2,10 @@ import { router } from 'expo-router';
 import { Alert } from 'react-native';
 import { DocList } from '@/components/doc-list';
 import { api } from '@/lib/api';
+import { hijriYear } from '@/lib/dates';
 
 const open = (id: number) => router.push({ pathname: '/sheet/[id]', params: { id } });
 
-const hijriYear = () =>
-  new Intl.DateTimeFormat('en-u-ca-islamic-umalqura-nu-latn', { year: 'numeric' }).formatToParts(new Date()).find((p) => p.type === 'year')?.value || '';
 
 async function create() {
   try {
