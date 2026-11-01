@@ -17,7 +17,7 @@ import { Field, RemoveX, SmallButton, type BlockProps } from './basic';
 const MAX_FILES_PER_ITEM = 20;
 
 // ---------- اختيار صورة وتصغيرها قبل الرفع (مثل shrinkImage في الموقع) ----------
-async function pickImage(fromCamera: boolean): Promise<LocalFile | null> {
+export async function pickImage(fromCamera: boolean): Promise<LocalFile | null> {
   const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : { granted: true };
   if (!perm.granted) {
     Alert.alert('الكاميرا غير مسموحة', 'اسمح للتطبيق باستخدام الكاميرا من Settings ← مركز المعلم.');

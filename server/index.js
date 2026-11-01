@@ -416,9 +416,13 @@ function docRoutes({ table, base, listKey, itemKey, meta, notFound, defTitle, cl
   app.put(`${base}/:id`, requireAuth, (req, res) => {
     const c = load(req, res);
     if (!c) return;
+    // نفس فحص التعارض في ملفات الإنجاز: لا نكتب فوق تعديل من جهاز آخر إلا بموافقة المعلم
+    if (req.body.baseUpdatedAt && req.body.baseUpdatedAt !== c.updated_at) {
+      return res.status(409).json({ error: 'تم تعديل هذا المستند من جهاز آخر', code: 'CONFLICT', updated_at: c.updated_at });
+    }
     const data = clean(req.user.id, req.body.data);
     db.prepare(`UPDATE ${table} SET title = ?, data = ?, updated_at = datetime('now') WHERE id = ?`).run(str(req.body.title, 100) || c.title, JSON.stringify(data), c.id);
-    res.json({ ok: true, data });
+    res.json({ ok: true, data, updated_at: db.prepare(`SELECT updated_at FROM ${table} WHERE id = ?`).get(c.id).updated_at });
   });
   app.post(`${base}/:id/duplicate`, requireAuth, (req, res) => {
     const c = load(req, res);
