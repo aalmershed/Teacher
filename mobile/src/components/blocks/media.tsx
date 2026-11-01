@@ -17,22 +17,33 @@ import { Field, RemoveX, SmallButton, type BlockProps } from './basic';
 const MAX_FILES_PER_ITEM = 20;
 
 // ---------- اختيار صورة وتصغيرها قبل الرفع (مثل shrinkImage في الموقع) ----------
-export async function pickImage(fromCamera: boolean): Promise<LocalFile | null> {
+// صور الآيفون غالبًا HEIC والخادم ما يقبلها، فنحوّلها JPG (أو نبقيها PNG) ونصغّر الكبيرة
+export async function pickImages(fromCamera: boolean, limit = 1, max = 1800): Promise<LocalFile[]> {
   const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : { granted: true };
   if (!perm.granted) {
     Alert.alert('الكاميرا غير مسموحة', 'اسمح للتطبيق باستخدام الكاميرا من Settings ← مركز المعلم.');
-    return null;
+    return [];
   }
-  const opts: ImagePicker.ImagePickerOptions = { mediaTypes: ['images'], quality: 1 };
+  const opts: ImagePicker.ImagePickerOptions = {
+    mediaTypes: ['images'], quality: 1,
+    ...(limit > 1 && !fromCamera ? { allowsMultipleSelection: true, selectionLimit: limit } : {}),
+  };
   const r = fromCamera ? await ImagePicker.launchCameraAsync(opts) : await ImagePicker.launchImageLibraryAsync(opts);
-  if (r.canceled || !r.assets[0]) return null;
-  const a = r.assets[0];
-  const max = 1800;
-  const ctx = ImageManipulator.manipulate(a.uri);
-  if (Math.max(a.width, a.height) > max) ctx.resize(a.width >= a.height ? { width: max } : { height: max });
-  const png = a.mimeType === 'image/png';
-  const out = await (await ctx.renderAsync()).saveAsync({ compress: 0.86, format: png ? SaveFormat.PNG : SaveFormat.JPEG });
-  return { uri: out.uri, name: png ? 'image.png' : 'image.jpg', mimeType: png ? 'image/png' : 'image/jpeg' };
+  if (r.canceled) return [];
+  const out: LocalFile[] = [];
+  for (const [n, a] of r.assets.slice(0, limit).entries()) {
+    const ctx = ImageManipulator.manipulate(a.uri);
+    if (Math.max(a.width, a.height) > max) ctx.resize(a.width >= a.height ? { width: max } : { height: max });
+    const png = a.mimeType === 'image/png';
+    const saved = await (await ctx.renderAsync()).saveAsync({ compress: 0.86, format: png ? SaveFormat.PNG : SaveFormat.JPEG });
+    const base = (a.fileName || '').replace(/\.[^.]+$/, '') || `صورة ${n + 1}`;
+    out.push({ uri: saved.uri, name: `${base}.${png ? 'png' : 'jpg'}`, mimeType: png ? 'image/png' : 'image/jpeg' });
+  }
+  return out;
+}
+
+export async function pickImage(fromCamera: boolean): Promise<LocalFile | null> {
+  return (await pickImages(fromCamera))[0] || null;
 }
 
 export const imageUrl = (id: string) => `${API_URL}/i/${id}`;
@@ -104,14 +115,34 @@ function Qr({ url }: { url: string }) {
 export function LinksBlock({ block, update, base }: BlockProps<'links'> & { base: string }) {
   const [progress, setProgress] = useState<{ i: number; text: string } | null>(null);
 
-  const attach = async (i: number) => {
-    const have = block.items[i]?.files?.length || 0;
-    const room = MAX_FILES_PER_ITEM - have;
+  // الشاهد ممكن يكون صورة من الألبوم أو الكاميرا، أو ملف (PDF، Word...) من تطبيق Files
+  const attach = (i: number) => {
+    const room = MAX_FILES_PER_ITEM - (block.items[i]?.files?.length || 0);
     if (room <= 0) return Alert.alert('الحد الأقصى', 'الحد الأقصى 20 ملفًا للبند الواحد');
-    const r = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
-    if (r.canceled || !r.assets.length) return;
-    const queue = r.assets.slice(0, room);
-    if (r.assets.length > room) Alert.alert('تنبيه', `بيترفع ${room} ملفات بس (الحد 20 للبند)`);
+    const run = (pick: () => Promise<LocalFile[]>) => async () => {
+      try {
+        const files = await pick();
+        if (files.length) await upload(i, files, room);
+      } catch (e: any) {
+        Alert.alert('تعذر اختيار الملف', e.message);
+      }
+    };
+    chooseAction('رفع شاهد', [
+      { label: 'من الصور', onPress: run(() => pickImages(false, room, 2400)) },
+      { label: 'التصوير بالكاميرا', onPress: run(() => pickImages(true, 1, 2400)) },
+      {
+        label: 'من الملفات (PDF، Word...)',
+        onPress: run(async () => {
+          const r = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
+          return r.canceled ? [] : r.assets.map((f) => ({ uri: f.uri, name: f.name, mimeType: f.mimeType || 'application/octet-stream' }));
+        }),
+      },
+    ]);
+  };
+
+  const upload = async (i: number, picked: LocalFile[], room: number) => {
+    const queue = picked.slice(0, room);
+    if (picked.length > room) Alert.alert('تنبيه', `بيترفع ${room} ملفات بس (الحد 20 للبند)`);
     let added = 0;
     for (let k = 0; k < queue.length; k++) {
       const f = queue[k];
@@ -120,7 +151,7 @@ export function LinksBlock({ block, update, base }: BlockProps<'links'> & { base
       try {
         const { id, name } = await uploadFile<{ id: string; name: string }>(
           '/api/files',
-          { uri: f.uri, name: f.name, mimeType: f.mimeType || 'application/octet-stream' },
+          f,
           (pct) => setProgress({ i, text: `${label}${pct}%` }),
         );
         update((b) => {
