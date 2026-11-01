@@ -40,6 +40,10 @@ function RootStack() {
         headerTintColor: colors.brandDark,
         headerTitleStyle: { fontFamily: fonts.bold, color: colors.ink },
         headerBackButtonDisplayMode: 'minimal',
+        // رأس ثابت غير شفاف: في iOS الجديد الرأس شفاف افتراضيًا فيختفي أعلى المحتوى تحته
+        headerTransparent: false,
+        headerStyle: { backgroundColor: colors.bg },
+        headerShadowVisible: false,
         contentStyle: { backgroundColor: colors.bg },
       }}
     >

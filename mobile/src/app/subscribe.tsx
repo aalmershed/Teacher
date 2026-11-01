@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Field } from '@/components/blocks/basic';
 import { PaymentSheet, type MoyasarForm } from '@/components/payment-sheet';
 import { Button, Card, Loading, Text, fmtDate } from '@/components/ui';
@@ -70,8 +70,8 @@ export default function Subscribe() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+    <>
+      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card style={{ gap: 6 }}>
           {sub.active ? (
             <>
@@ -136,7 +136,7 @@ export default function Subscribe() {
           else Alert.alert('لم تكتمل عملية الدفع', `${r.message ? r.message + '. ' : ''}ما تفعّل الاشتراك، تقدر تحاول مرة ثانية.`);
         }}
       />
-    </KeyboardAvoidingView>
+    </>
   );
 }
 

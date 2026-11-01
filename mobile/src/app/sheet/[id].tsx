@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Field } from '@/components/blocks/basic';
 import { Labeled } from '@/components/doc-fields';
 import { DocPreview } from '@/components/doc-preview';
@@ -40,8 +40,8 @@ export default function SheetEditor() {
   return (
     <>
       <Stack.Screen options={{ title: doc.title || 'كشف متابعة', headerRight: () => <SaveBadge status={status} /> }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-        <ScrollView ref={scroll} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      <>
+        <ScrollView ref={scroll} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           {current === 'setup' ? (
             <>
               <View style={styles.pv}>
@@ -66,7 +66,7 @@ export default function SheetEditor() {
             <SheetGrades d={d} rev={rev} id={id} title={doc.title} onEditSetup={() => go('setup')} />
           )}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </>
     </>
   );
 }

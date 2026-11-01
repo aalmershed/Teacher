@@ -1,6 +1,6 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, ErrorBox, Input, Text, fmtDate } from '@/components/ui';
 import { api, type User } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -45,8 +45,8 @@ export default function Account() {
     ]);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+    <>
+      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card>
           <Text weight="extraBold" style={{ fontSize: 20 }}>{user.name}</Text>
           <Text muted>{user.email}</Text>
@@ -83,7 +83,7 @@ export default function Account() {
 
         <Button title="تسجيل الخروج" variant="danger" onPress={confirmLogout} />
       </ScrollView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 

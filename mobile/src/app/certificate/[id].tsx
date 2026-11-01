@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Field } from '@/components/blocks/basic';
 import { Labeled, LogoPicker, NamesInput, Section, docStyles } from '@/components/doc-fields';
 import { DocPreview } from '@/components/doc-preview';
@@ -35,8 +35,8 @@ export default function CertificateEditor() {
   return (
     <>
       <Stack.Screen options={{ title: doc.title || 'شهادة', headerRight: () => <SaveBadge status={status} /> }} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      <>
+        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={styles.pv}>
             <DocPreview renderer="CertRender" data={d} options={{ index: shown, watermark }} />
             {names.length > 1 ? (
@@ -105,7 +105,7 @@ export default function CertificateEditor() {
             </Section>
           </Card>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </>
     </>
   );
 }

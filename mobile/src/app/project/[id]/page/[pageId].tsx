@@ -1,7 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Draft } from 'immer';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { FieldsBlock, Field, QuoteBlock, TableBlock, TextBlock } from '@/components/blocks/basic';
 import { ImagesBlock, LinksBlock } from '@/components/blocks/media';
 import { chooseAction } from '@/components/doc-list';
@@ -86,8 +86,8 @@ export default function PageEditor() {
           ),
         }}
       />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={100}>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      <>
+        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <Card style={{ gap: 12 }}>
             <Field
               value={page.title} onChangeText={(v) => updatePage((p) => { p.title = v; })}
@@ -146,7 +146,7 @@ export default function PageEditor() {
             </Card>
           ) : null}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </>
     </>
   );
 }

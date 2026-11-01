@@ -1,6 +1,6 @@
 import { Link } from 'expo-router';
 import { useRef, useState, type ComponentRef } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, ErrorBox, Input, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -27,8 +27,8 @@ export default function Login() {
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      <>
+        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={styles.brand}>
             <View style={styles.mark}><Text weight="extraBold" style={styles.markText}>م</Text></View>
             <Text weight="extraBold" style={styles.title}>مركز المعلم</Text>
@@ -58,7 +58,7 @@ export default function Login() {
             <Link href="/register"><Text weight="bold" style={{ color: colors.brandDark }}>سجّل مجانًا</Text></Link>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+      </>
     </SafeAreaView>
   );
 }

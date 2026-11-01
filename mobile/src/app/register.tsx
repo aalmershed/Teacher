@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { ScrollView } from 'react-native';
 import { Button, Card, ErrorBox, Input, Text } from '@/components/ui';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -30,8 +30,8 @@ export default function Register() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+    <>
+      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card>
           <ErrorBox message={error} />
           <Input label="الاسم الكامل" value={form.name} onChangeText={set('name')} placeholder="مثال: نورة السبيعي" autoComplete="name" textContentType="name" />
@@ -43,6 +43,6 @@ export default function Register() {
           <Text muted style={{ fontSize: 13, marginTop: 14 }}>{note}</Text>
         </Card>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </>
   );
 }
