@@ -35,6 +35,8 @@ function RootStack() {
         <Stack.Screen name="project/[id]/page/[pageId]" options={{ title: '' }} />
         <Stack.Screen name="certificate/[id]" options={{ title: '' }} />
         <Stack.Screen name="sheet/[id]" options={{ title: '' }} />
+        <Stack.Screen name="project/[id]/preview" options={{ title: 'معاينة' }} />
+        <Stack.Screen name="subscribe" options={{ title: 'الاشتراك', presentation: 'modal' }} />
       </Stack.Protected>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="login" options={{ headerShown: false }} />

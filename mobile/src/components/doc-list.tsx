@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { Button, Empty, ErrorBox, Loading, Text, fmtDate } from '@/components/ui';
 import { api, type DocSummary } from '@/lib/api';
+import { downloadPdf } from '@/lib/pdf';
 import { colors, radius } from '@/theme';
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
   newLabel: string;
   onNew: () => void;
   onOpen: (item: DocSummary) => void;
+  extra?: (item: DocSummary) => { label: string; onPress: () => void }[];
 };
 
 // يعرض قائمة خيارات أصلية (Action Sheet في الآيفون)
@@ -31,7 +33,7 @@ export function chooseAction(title: string, options: { label: string; destructiv
 }
 
 // قائمة مستندات المعلم (ملفات الإنجاز، الشهادات، الكشوف) — تتحدث عند فتح الشاشة وبالسحب للأسفل
-export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, onNew, onOpen }: Props) {
+export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, onNew, onOpen, extra }: Props) {
   const [items, setItems] = useState<DocSummary[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -72,6 +74,8 @@ export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, 
 
   const menu = (item: DocSummary) => chooseAction(item.title, [
     { label: 'فتح وتعديل', onPress: () => onOpen(item) },
+    ...(extra ? extra(item) : []),
+    { label: 'تنزيل PDF', onPress: () => downloadPdf(`${path}/${item.id}/pdf`, `${item.title}.pdf`) },
     { label: 'نسخ', onPress: () => duplicate(item) },
     { label: 'حذف', destructive: true, onPress: () => remove(item) },
   ]);

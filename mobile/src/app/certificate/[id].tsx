@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Field } from '@/components/blocks/basic';
 import { Labeled, LogoPicker, NamesInput, Section, docStyles } from '@/components/doc-fields';
 import { DocPreview } from '@/components/doc-preview';
+import { PdfButton } from '@/components/pdf-button';
 import { SaveBadge } from '@/components/editor-common';
 import { Card, Empty, Loading, Text } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
@@ -45,6 +46,7 @@ export default function CertificateEditor() {
                 <Pressable onPress={() => setIndex(Math.min(names.length - 1, shown + 1))} style={styles.navBtn}><Text weight="bold">←</Text></Pressable>
               </View>
             ) : null}
+            <PdfButton path={`/api/certificates/${id}/pdf`} name={`${doc.title || 'شهادة'}.pdf`} before={store.flush} />
           </View>
 
           <Card style={{ gap: 18 }}>

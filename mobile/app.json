@@ -13,7 +13,9 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "ExpoLocalization_forcesRTL": true,
-        "CFBundleLocalizations": ["ar"]
+        "CFBundleLocalizations": [
+          "ar"
+        ]
       }
     },
     "android": {
@@ -46,8 +48,12 @@
         {
           "forcesRTL": true,
           "supportedLocales": {
-            "ios": ["ar"],
-            "android": ["ar"]
+            "ios": [
+              "ar"
+            ],
+            "android": [
+              "ar"
+            ]
           }
         }
       ],
@@ -59,7 +65,8 @@
           "cameraPermission": "يحتاج مركز المعلم الكاميرا لتصوير الشواهد وإضافتها في ملف الإنجاز.",
           "microphonePermission": false
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

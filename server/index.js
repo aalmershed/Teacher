@@ -371,7 +371,9 @@ app.get('/api/projects/:id/preview', requireAuth, async (req, res, next) => {
     const p = loadProject(req, res);
     if (!p) return;
     // غير المشترك يرى المعاينة بعلامة مائية ولا يستطيع طباعتها
-    res.type('html').send(await renderProject(p, { screen: true, baseUrl: baseUrl(req), watermark: !isSubscribed(req.user) }));
+    // التطبيق يعرض المعاينة بدون كوكيز، فالصور تأتي من روابطها العامة (/i/ برمز عشوائي) بدل /api/uploads
+    const imageUrl = isApp(req) ? (u) => `/i/${u}` : undefined;
+    res.type('html').send(await renderProject(p, { screen: true, baseUrl: baseUrl(req), watermark: !isSubscribed(req.user), imageUrl }));
   } catch (e) { next(e); }
 });
 

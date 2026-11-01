@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Field } from '@/components/blocks/basic';
 import { Labeled } from '@/components/doc-fields';
 import { DocPreview } from '@/components/doc-preview';
+import { PdfButton } from '@/components/pdf-button';
 import { SaveBadge } from '@/components/editor-common';
 import { SheetGrades } from '@/components/sheet/grades';
 import { SheetSetup } from '@/components/sheet/setup';
@@ -52,6 +53,7 @@ export default function SheetEditor() {
                     <Pressable onPress={() => setPage(Math.min(pages - 1, shown + 1))} style={styles.navBtn}><Text weight="bold">←</Text></Pressable>
                   </View>
                 ) : null}
+                <PdfButton path={`/api/sheets/${id}/pdf`} name={`${doc.title || 'كشف-متابعة'}.pdf`} before={store.flush} />
               </View>
               <Card>
                 <Labeled label="اسم الكشف (يظهر في قائمتك)">
@@ -61,7 +63,7 @@ export default function SheetEditor() {
               <SheetSetup d={d} themes={(meta.themes || []) as SheetTheme[]} defaults={(meta.defaultGroups || []) as Group[]} rev={rev} onDone={() => go('grades')} />
             </>
           ) : (
-            <SheetGrades d={d} rev={rev} onEditSetup={() => go('setup')} />
+            <SheetGrades d={d} rev={rev} id={id} title={doc.title} onEditSetup={() => go('setup')} />
           )}
         </ScrollView>
       </KeyboardAvoidingView>

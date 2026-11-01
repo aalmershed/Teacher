@@ -8,6 +8,7 @@ export default function Projects() {
       emptyTitle="ما عندك ملفات إنجاز للحين" emptyHint="اضغط «ملف إنجاز جديد» ويجيك ملف جاهز بكل الصفحات."
       onNew={() => router.push('/project/new')}
       onOpen={(p) => router.push({ pathname: '/project/[id]', params: { id: p.id } })}
+      extra={(p) => [{ label: 'معاينة', onPress: () => router.push({ pathname: '/project/[id]/preview', params: { id: p.id } }) }]}
     />
   );
 }

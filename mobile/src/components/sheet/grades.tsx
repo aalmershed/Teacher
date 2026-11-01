@@ -1,5 +1,6 @@
 import { useRef, useState, type ComponentRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { PdfButton } from '@/components/pdf-button';
 import { Button, Card, Text } from '@/components/ui';
 import { MARKS, deg, fmt, sheetStore as store, studentTotal, totalMax, type Cell, type Mark, type SheetData, type Sub } from '@/lib/sheet-store';
 import { colors, fonts } from '@/theme';
@@ -54,7 +55,7 @@ function ScoreInput({ sid, sub, value, inputRef, onNext }: {
   );
 }
 
-export function SheetGrades({ d, rev, onEditSetup }: { d: SheetData; rev: number; onEditSetup: () => void }) {
+export function SheetGrades({ d, rev, id, title, onEditSetup }: { d: SheetData; rev: number; id: string; title: string; onEditSetup: () => void }) {
   const subs: (Sub & { group: string })[] = [];
   d.groups.forEach((g) => g.subs.forEach((s) => subs.push({ ...s, group: g.title })));
   const [subId, setSubId] = useState(subs[0]?.id);
@@ -72,6 +73,10 @@ export function SheetGrades({ d, rev, onEditSetup }: { d: SheetData; rev: number
         <Text weight="extraBold" style={{ fontSize: 16 }}>🔒 {[d.school, d.subject].filter(Boolean).join(' — ') || d.title}</Text>
         <Text muted style={{ fontSize: 13 }}>{meta}</Text>
         <Button title="✎ تعديل الإعدادات" variant="outline" onPress={onEditSetup} style={{ marginTop: 6, minHeight: 42 }} />
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <PdfButton title="⬇ PDF بالدرجات" path={`/api/sheets/${id}/pdf`} name={`${title || 'كشف-متابعة'}.pdf`} before={store.flush} style={{ flex: 1, minHeight: 44 }} />
+          <PdfButton title="⬇ PDF فارغ" variant="outline" path={`/api/sheets/${id}/pdf?blank=1`} name={`${title || 'كشف-متابعة'}.pdf`} before={store.flush} style={{ flex: 1, minHeight: 44 }} />
+        </View>
       </Card>
 
       <Text muted style={{ fontSize: 13 }}>اختر البند، وبعدين اضغط على الخانات الصغيرة لوضع ✓ أو ✗، واكتب الدرجة. المجموع والمتوسط يتحسبون تلقائيًا، والحفظ تلقائي.</Text>
