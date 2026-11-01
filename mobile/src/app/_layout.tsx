@@ -34,6 +34,7 @@ function RootStack() {
         <Stack.Screen name="project/[id]/add-page" options={{ title: 'إضافة صفحة', presentation: 'modal' }} />
         <Stack.Screen name="project/[id]/page/[pageId]" options={{ title: '' }} />
         <Stack.Screen name="certificate/[id]" options={{ title: '' }} />
+        <Stack.Screen name="sheet/[id]" options={{ title: '' }} />
       </Stack.Protected>
       <Stack.Protected guard={!user}>
         <Stack.Screen name="login" options={{ headerShown: false }} />

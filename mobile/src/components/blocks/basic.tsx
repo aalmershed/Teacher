@@ -37,7 +37,7 @@ export function TextBlock({ block, update }: BlockProps<'text'>) {
 }
 
 // ---------- قائمة اختيارات (مثل إدارة التعليم) ----------
-function OptionPicker({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (v: string) => void }) {
+export function OptionPicker({ label, value, options, onChange, emptyLabel = 'بدون (إخفاء الحقل)' }: { label: string; value: string; options: string[]; onChange: (v: string) => void; emptyLabel?: string }) {
   const [open, setOpen] = useState(false);
   // قيمة قديمة مكتوبة يدويًا تبقى ظاهرة حتى يختار المعلم من القائمة
   const all = value && !options.includes(value) ? [value, ...options] : options;
@@ -58,7 +58,7 @@ function OptionPicker({ label, value, options, onChange }: { label: string; valu
             keyExtractor={(o) => o || '-'}
             renderItem={({ item }) => (
               <Pressable style={styles.option} onPress={() => { onChange(item); setOpen(false); }}>
-                <Text style={{ flex: 1, color: item ? colors.ink : colors.muted }}>{item || 'بدون (إخفاء الحقل)'}</Text>
+                <Text style={{ flex: 1, color: item ? colors.ink : colors.muted }}>{item || emptyLabel}</Text>
                 {item === value ? <Ionicons name="checkmark" size={20} color={colors.brand} /> : null}
               </Pressable>
             )}
