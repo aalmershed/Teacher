@@ -73,7 +73,15 @@
       "reactCompiler": true
     },
     "extra": {
-      "forcesRTL": true
+      "forcesRTL": true,
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "60ede0ad-7713-4f18-8f0d-b4114756b73a"
+      }
     },
     "owner": "azalmershed"
   }
