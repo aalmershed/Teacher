@@ -1,5 +1,6 @@
 import { Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold, useFonts } from '@expo-google-fonts/tajawal';
-import { Stack } from 'expo-router';
+import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { Pressable, Text, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -7,6 +8,21 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { colors, fonts } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// أي خطأ غير متوقع في شاشة يعرض رسالة مع زر إعادة المحاولة بدل ما يقفل التطبيق
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => { SplashScreen.hideAsync(); }, []);
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14, backgroundColor: colors.bg }}>
+      <Text style={{ fontSize: 20, fontWeight: '800', color: colors.ink, textAlign: 'center' }}>صار خطأ غير متوقع</Text>
+      <Text style={{ fontSize: 15, color: colors.muted, textAlign: 'center' }}>بياناتك محفوظة. جرّب مرة ثانية، ولو تكرر الخطأ صوّر الشاشة وأرسلها للدعم.</Text>
+      <Text selectable style={{ fontSize: 12, color: colors.muted, textAlign: 'center' }}>{error.message}</Text>
+      <Pressable onPress={retry} style={{ backgroundColor: colors.brand, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 }}>
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>حاول مرة ثانية</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 function RootStack() {
   const { user, ready } = useAuth();
