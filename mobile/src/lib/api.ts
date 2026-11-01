@@ -79,6 +79,6 @@ export function uploadFile<T = any>(path: string, file: LocalFile, onProgress?: 
   });
 }
 
-export type Subscription ={ active: boolean; status: string; plan: string | null; endsAt: number | null };
+export type Subscription = { active: boolean; status: string; plan: string | null; endsAt: number | null; provider?: string };
 export type User = { id: number; name: string; email: string; phone: string | null; isAdmin: boolean; subscription: Subscription };
 export type DocSummary = { id: number; title: string; updated_at: string };

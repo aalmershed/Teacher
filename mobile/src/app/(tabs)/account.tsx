@@ -1,4 +1,4 @@
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, ErrorBox, Input, Text, fmtDate } from '@/components/ui';
@@ -69,6 +69,7 @@ export default function Account() {
               <Text muted style={{ marginTop: 8 }}>تقدر تسوي ملفاتك وتعدّلها مجانًا. الاشتراك مطلوب لتنزيل ملفات PDF فقط.</Text>
             </>
           )}
+          <Button title={sub.active ? 'تجديد الاشتراك' : 'اشترك الآن'} variant={sub.active ? 'outline' : 'accent'} onPress={() => router.push('/subscribe')} style={{ marginTop: 12 }} />
         </Card>
 
         <Card>
