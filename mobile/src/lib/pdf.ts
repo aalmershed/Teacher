@@ -1,5 +1,4 @@
 import { File, Paths } from 'expo-file-system';
-import { router } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
 import { API_URL, authHeaders } from './api';
@@ -18,7 +17,7 @@ export async function downloadPdf(path: string, fallbackName: string) {
     let msg = 'تعذر إنشاء ملف PDF';
     let code = '';
     try { const d = await res.json(); msg = d.error || msg; code = d.code; } catch { /* ليس JSON */ }
-    if (code === 'SUBSCRIPTION_REQUIRED') return askToSubscribe();
+    if (code === 'SUBSCRIPTION_REQUIRED') return showDownloadUnavailable();
     Alert.alert('تعذر التنزيل', msg);
     return;
   }
@@ -36,13 +35,7 @@ export async function downloadPdf(path: string, fallbackName: string) {
   }
 }
 
-export function askToSubscribe() {
-  Alert.alert(
-    'التنزيل للمشتركين',
-    'تقدر تسوي ملفاتك وتعدّلها وتعاينها مجانًا. تنزيل ملف PDF يحتاج اشتراك.',
-    [
-      { text: 'لاحقًا', style: 'cancel' },
-      { text: 'اشترك الآن', onPress: () => router.push('/subscribe') },
-    ],
-  );
+// نسخة App Store ما تبيع ولا توجّه للدفع (قوانين Apple)، فنكتفي بتوضيح أن التنزيل غير مفعّل للحساب
+export function showDownloadUnavailable() {
+  Alert.alert('التنزيل غير متاح', 'تنزيل ملفات PDF غير مفعّل لحسابك حاليًا. تقدر تكمل تعديل ملفاتك ومعاينتها.');
 }

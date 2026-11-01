@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, ErrorBox, Input, Text, fmtDate } from '@/components/ui';
@@ -6,7 +6,6 @@ import { api, type User } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { colors } from '@/theme';
 
-const PLAN_NAMES: Record<string, string> = { monthly: 'شهري', yearly: 'سنوي' };
 
 export default function Account() {
   const { user, logout, refresh } = useAuth();
@@ -15,8 +14,9 @@ export default function Account() {
   const [newPassword, setNew] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  // حالة الاشتراك قد تتغير من الموقع، فنحدّثها كل ما فتح الشاشة
+  // حالة التنزيل قد تتغير من الموقع، فنحدّثها كل ما فتح الشاشة
   useFocusEffect(useCallback(() => { refresh().catch(() => {}); }, [refresh]));
 
   if (!user) return null;
@@ -38,6 +38,33 @@ export default function Account() {
     }
   };
 
+  // حذف الحساب من داخل التطبيق (تشترطه Apple) — بتأكيدين: تحذير ثم كلمة المرور
+  const deleteAccount = async (password: string) => {
+    setDeleting(true);
+    try {
+      await api('DELETE', '/api/me', { password });
+      await logout();
+      Alert.alert('تم حذف الحساب', 'انحذف حسابك وكل ملفاتك نهائيًا.');
+    } catch (e: any) {
+      Alert.alert('تعذر حذف الحساب', e.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmDelete = () =>
+    Alert.alert('حذف الحساب نهائيًا', 'بينحذف حسابك وكل ملفات الإنجاز والشهادات والكشوف والصور والشواهد من التطبيق والموقع، وما تقدر ترجعها.', [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'متابعة', style: 'destructive',
+        onPress: () => Alert.prompt(
+          'تأكيد الحذف', 'اكتب كلمة المرور للتأكيد',
+          [{ text: 'إلغاء', style: 'cancel' }, { text: 'احذف حسابي', style: 'destructive', onPress: (p?: string) => deleteAccount(p || '') }],
+          'secure-text',
+        ),
+      },
+    ]);
+
   const confirmLogout = () =>
     Alert.alert('تسجيل الخروج', 'متأكد تبي تطلع من حسابك؟', [
       { text: 'إلغاء', style: 'cancel' },
@@ -53,23 +80,19 @@ export default function Account() {
         </Card>
 
         <Card>
-          <Text weight="bold" style={styles.section}>الاشتراك</Text>
-          {sub.active ? (
+          {/* نسخة App Store تعرض حالة الحساب فقط بدون بيع أو توجيه للدفع (قوانين Apple) */}
+          <Text weight="bold" style={styles.section}>تنزيل ملفات PDF</Text>
+          {sub.active || user.isAdmin ? (
             <View style={[styles.badge, { backgroundColor: colors.brandLight }]}>
               <Text weight="bold" style={{ color: colors.brandDark }}>
-                مشترك{sub.plan && PLAN_NAMES[sub.plan] ? ` (${PLAN_NAMES[sub.plan]})` : ''}
-                {sub.endsAt ? ` حتى ${fmtDate(sub.endsAt)}` : ''}
+                مفعّل{sub.endsAt && !user.isAdmin ? ` حتى ${fmtDate(sub.endsAt)}` : ''}
               </Text>
             </View>
           ) : (
-            <>
-              <View style={[styles.badge, { backgroundColor: colors.accentLight }]}>
-                <Text weight="bold" style={{ color: colors.accent }}>غير مشترك</Text>
-              </View>
-              <Text muted style={{ marginTop: 8 }}>تقدر تسوي ملفاتك وتعدّلها مجانًا. الاشتراك مطلوب لتنزيل ملفات PDF فقط.</Text>
-            </>
+            <View style={[styles.badge, { backgroundColor: colors.bg }]}>
+              <Text weight="bold" style={{ color: colors.muted }}>غير مفعّل لحسابك</Text>
+            </View>
           )}
-          <Button title={sub.active ? 'تجديد الاشتراك' : 'اشترك الآن'} variant={sub.active ? 'outline' : 'accent'} onPress={() => router.push('/subscribe')} style={{ marginTop: 12 }} />
         </Card>
 
         <Card>
@@ -81,7 +104,9 @@ export default function Account() {
           <Button title="حفظ" onPress={save} loading={saving} />
         </Card>
 
-        <Button title="تسجيل الخروج" variant="danger" onPress={confirmLogout} />
+        <Button title="تسجيل الخروج" variant="outline" onPress={confirmLogout} />
+        <Button title="حذف الحساب" variant="danger" onPress={confirmDelete} loading={deleting} />
+        <Text muted style={{ fontSize: 12, textAlign: 'center' }}>حذف الحساب يحذف كل ملفاتك وشهاداتك وكشوفك وصورك نهائيًا من التطبيق والموقع.</Text>
       </ScrollView>
     </>
   );

@@ -5,7 +5,6 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SaveBadge, Segmented, ThemePicker } from '@/components/editor-common';
 import { PdfButton } from '@/components/pdf-button';
 import { Button, Card, Empty, Input, Loading, Text } from '@/components/ui';
-import { useAuth } from '@/lib/auth';
 import { closeProject, flush, openProject, updateProject, useProjectState } from '@/lib/project-store';
 import type { Page } from '@/lib/project-types';
 import { colors, radius } from '@/theme';
@@ -17,8 +16,6 @@ const PAGE_ICONS: Partial<Record<Page['type'], keyof typeof Ionicons.glyphMap>> 
 export default function ProjectEditor() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { project, status, error } = useProjectState();
-  const { user } = useAuth();
-  const subscribed = !!(user?.isAdmin || user?.subscription.active);
 
   useEffect(() => {
     openProject(Number(id));
@@ -58,7 +55,6 @@ export default function ProjectEditor() {
           />
           <PdfButton path={`/api/projects/${id}/pdf`} name={`${project.title || 'ملف-إنجاز'}.pdf`} before={flush} style={{ flex: 1 }} />
         </View>
-        {subscribed ? null : <Text muted style={{ fontSize: 13, textAlign: 'center' }}>التعديل والمعاينة مجانًا، وتنزيل ملف PDF للمشتركين.</Text>}
 
         <View style={styles.pagesHead}>
           <Text weight="extraBold" style={{ fontSize: 18 }}>الصفحات</Text>

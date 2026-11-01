@@ -191,6 +191,18 @@ app.put('/api/me', requireAuth, (req, res) => {
   res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });
 
+// حذف المعلم لحسابه بنفسه (تشترطه Apple لأي تطبيق فيه تسجيل) — بكلمة المرور للتأكيد، ويحذف كل ملفاته
+app.delete('/api/me', requireAuth, (req, res) => {
+  const u = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  if (!bcrypt.compareSync(String(req.body.password || ''), u.password_hash)) return res.status(400).json({ error: 'كلمة المرور غير صحيحة' });
+  if (u.is_admin) return res.status(400).json({ error: 'حساب المدير لا يُحذف من هنا' });
+  for (const r of db.prepare('SELECT id FROM uploads WHERE user_id = ?').all(u.id)) fs.unlink(path.join(DATA_DIR, 'uploads', r.id), () => {});
+  for (const r of db.prepare('SELECT id FROM files WHERE user_id = ?').all(u.id)) fs.unlink(path.join(DATA_DIR, 'files', r.id), () => {});
+  db.prepare('DELETE FROM users WHERE id = ?').run(u.id);
+  res.clearCookie('sid');
+  res.json({ ok: true });
+});
+
 // ---------- الاشتراكات ----------
 app.get('/api/plans', (_req, res) => res.json({ plans: Object.values(payments.getPlans()), trialDays: payments.TRIAL_DAYS, currency: 'ر.س' }));
 
@@ -817,7 +829,7 @@ app.get('/.well-known/apple-developer-merchantid-domain-association', (_req, res
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robots(baseUrl(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(seo.sitemap(baseUrl(req), PUBLIC)));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
-const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html' };
+const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html', '/privacy': 'privacy.html' };
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
 app.get('/editor/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'editor.html')));
 app.get('/certificate/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'certificate.html')));

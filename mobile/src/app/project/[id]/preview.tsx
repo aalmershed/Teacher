@@ -13,6 +13,8 @@ import { colors } from '@/theme';
 const FIT = `(function () {
   var m = document.createElement('meta'); m.name = 'viewport'; m.content = 'width=device-width,initial-scale=1,maximum-scale=4';
   document.head.appendChild(m);
+  // العلامة المائية في التطبيق «نسخة معاينة» فقط، بدون دعوة للاشتراك (قوانين Apple)
+  var st = document.createElement('style'); st.textContent = ".sheet::after{content:'نسخة معاينة'!important}"; document.head.appendChild(st);
   function fit() {
     var w = 0; document.querySelectorAll('.sheet').forEach(function (s) { w = Math.max(w, s.offsetWidth); });
     if (w) document.body.style.zoom = Math.min(1, window.innerWidth / (w + 16));

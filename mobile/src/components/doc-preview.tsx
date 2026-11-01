@@ -22,7 +22,8 @@ const html = (renderer: Props['renderer']) => `<!doctype html><html dir="rtl"><h
   const fit = () => { pv.style.transform = 'scale(' + (innerWidth / 1123) + ')'; };
   addEventListener('resize', fit);
   window.show = (data, opts) => {
-    pv.srcdoc = ${renderer}.render(data, Object.assign({ fontCss: '@import url(/assets/fonts.css);', imageUrl: (u) => '/i/' + u, screen: true }, opts));
+    // نص العلامة المائية في التطبيق «نسخة معاينة» فقط، بدون دعوة للاشتراك (قوانين Apple)
+    pv.srcdoc = ${renderer}.render(data, Object.assign({ fontCss: '@import url(/assets/fonts.css);', imageUrl: (u) => '/i/' + u, screen: true }, opts)).replace(/نسخة معاينة · اشترك لتنزيل [^<]*/g, 'نسخة معاينة');
     fit();
   };
   window.ReactNativeWebView.postMessage('ready');
