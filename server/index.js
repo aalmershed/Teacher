@@ -56,10 +56,18 @@ function createSession(res, userId) {
   const expires = Date.now() + SESSION_DAYS * 864e5;
   db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, userId, expires);
   res.cookie('sid', token, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: SESSION_DAYS * 864e5 });
+  return token;
 }
 
+// تطبيق الجوال يرسل رمز الجلسة في ترويسة Authorization بدل الكوكيز
+const isApp = (req) => req.get('X-Client') === 'mobile';
+const sessionToken = (req) => {
+  const m = /^Bearer ([a-f0-9]{64})$/.exec(req.get('Authorization') || '');
+  return m ? m[1] : req.cookies.sid;
+};
+
 app.use((req, _res, next) => {
-  const token = req.cookies.sid;
+  const token = sessionToken(req);
   if (token) {
     const row = db.prepare('SELECT u.id, u.name, u.email, u.phone, u.is_admin, u.suspended, s.expires_at FROM sessions s JOIN users u ON u.id = s.user_id WHERE s.token = ?').get(token);
     if (row && row.expires_at > Date.now() && !row.suspended) req.user = row;
@@ -93,8 +101,8 @@ app.post('/api/auth/register', (req, res) => {
     .run(name, email, phone || null, hash, email === ADMIN_EMAIL ? 1 : 0);
   const userId = Number(info.lastInsertRowid);
   payments.startTrial(userId);
-  createSession(res, userId);
-  res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(userId)) });
+  const token = createSession(res, userId);
+  res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(userId)), ...(isApp(req) ? { token } : {}) });
 });
 
 app.post('/api/auth/login', (req, res) => {
@@ -104,8 +112,8 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
   }
   if (user.suspended) return res.status(403).json({ error: 'هذا الحساب موقوف. تواصل مع الدعم.' });
-  createSession(res, user.id);
-  res.json({ user: publicUser(user) });
+  const token = createSession(res, user.id);
+  res.json({ user: publicUser(user), ...(isApp(req) ? { token } : {}) });
 });
 
 // ---------- نسيت كلمة المرور ----------
@@ -162,7 +170,8 @@ app.post('/api/auth/reset', (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  if (req.cookies.sid) db.prepare('DELETE FROM sessions WHERE token = ?').run(req.cookies.sid);
+  const token = sessionToken(req);
+  if (token) db.prepare('DELETE FROM sessions WHERE token = ?').run(token);
   res.clearCookie('sid');
   res.json({ ok: true });
 });
