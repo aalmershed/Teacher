@@ -32,8 +32,7 @@ let onUnauthorized: (() => void) | null = null;
 export const setUnauthorizedHandler = (fn: (() => void) | null) => { onUnauthorized = fn; };
 
 export async function api<T = any>(method: string, path: string, body?: unknown): Promise<T> {
-  const headers: Record<string, string> = { 'X-Client': 'mobile', Accept: 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const headers: Record<string, string> = { ...authHeaders(), Accept: 'application/json' };
   let payload: BodyInit | undefined;
   if (body instanceof FormData) payload = body;
   else if (body !== undefined) {
@@ -56,6 +55,30 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
   return data as T;
 }
 
-export type Subscription = { active: boolean; status: string; plan: string | null; endsAt: number | null };
+export const authHeaders = (): Record<string, string> => ({ 'X-Client': 'mobile', ...(token ? { Authorization: `Bearer ${token}` } : {}) });
+
+export type LocalFile = { uri: string; name: string; mimeType: string };
+
+// رفع ملف مع نسبة التقدم (fetch لا يعطي نسبة التقدم، فنستخدم XMLHttpRequest)
+export function uploadFile<T = any>(path: string, file: LocalFile, onProgress?: (pct: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', API_URL + path);
+    Object.entries(authHeaders()).forEach(([k, v]) => xhr.setRequestHeader(k, v));
+    if (onProgress) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => {
+      let data: any = null;
+      try { data = JSON.parse(xhr.responseText); } catch { /* استجابة غير JSON */ }
+      if (xhr.status >= 200 && xhr.status < 300 && data) resolve(data);
+      else reject(new ApiError(data?.error || 'تعذر رفع الملف', xhr.status));
+    };
+    xhr.onerror = () => reject(new ApiError('انقطع الاتصال أثناء الرفع', 0));
+    const fd = new FormData();
+    fd.append('file', { uri: file.uri, name: file.name, type: file.mimeType } as any);
+    xhr.send(fd);
+  });
+}
+
+export type Subscription ={ active: boolean; status: string; plan: string | null; endsAt: number | null };
 export type User = { id: number; name: string; email: string; phone: string | null; isAdmin: boolean; subscription: Subscription };
 export type DocSummary = { id: number; title: string; updated_at: string };

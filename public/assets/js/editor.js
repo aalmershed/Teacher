@@ -88,11 +88,20 @@ async function save() {
   dirty = false;
   setStatus('جارٍ الحفظ...');
   try {
-    await api('PUT', `/api/projects/${projectId}`, { title: project.title, data: project.data });
+    const r = await api('PUT', `/api/projects/${projectId}`, { title: project.title, data: project.data, baseUpdatedAt: project.updated_at });
+    project.updated_at = r.updated_at;
     setStatus(dirty ? 'تغييرات غير محفوظة...' : 'كل التغييرات محفوظة ✓');
     return true;
   } catch (e) {
     dirty = true;
+    if (e.code === 'CONFLICT') {
+      setStatus('تم تعديل الملف من جهاز آخر', true);
+      confirmDialog('الملف تغيّر من جهاز آخر', 'عدّلت هذا الملف من التطبيق أو من متصفح آخر. اضغط «احفظ تعديلاتي» لحفظ تعديلاتك هنا فوقها، أو حدّث الصفحة لفتح النسخة الأحدث.', () => {
+        project.updated_at = null;
+        save();
+      }, 'احفظ تعديلاتي');
+      return false;
+    }
     setStatus('تعذر الحفظ — ' + e.message, true);
     clearTimeout(saveTimer); saveTimer = setTimeout(save, 5000);
     return false;
@@ -191,9 +200,10 @@ function addPage() {
   renderPage();
 }
 
-function confirmDialog(title, text, onOk) {
+function confirmDialog(title, text, onOk, okLabel = 'حذف') {
   $('cfTitle').textContent = title;
   $('cfText').textContent = text;
+  $('cfOk').textContent = okLabel;
   $('cfOk').onclick = () => { closeModal('confirmModal'); onOk(); };
   openModal('confirmModal');
 }

@@ -334,6 +334,10 @@ app.get('/api/projects/:id', requireAuth, (req, res) => {
 app.put('/api/projects/:id', requireAuth, (req, res) => {
   const p = loadProject(req, res);
   if (!p) return;
+  // إذا أرسل المحرر تاريخ النسخة التي بدأ منها وتغيّر الملف بعدها من جهاز آخر، لا نكتب فوقه إلا بموافقته
+  if (req.body.baseUpdatedAt && req.body.baseUpdatedAt !== p.updated_at) {
+    return res.status(409).json({ error: 'تم تعديل هذا الملف من جهاز آخر', code: 'CONFLICT', updated_at: p.updated_at });
+  }
   try {
     const data = syncBundles(req.user.id, applyAccountName(cleanData(req.body.data), req.user.name));
     const title = str(req.body.title, 200).trim() || p.title;

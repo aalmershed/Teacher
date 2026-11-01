@@ -1,8 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
-import { Empty, ErrorBox, Loading, Text, fmtDate } from '@/components/ui';
+import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { Button, Empty, ErrorBox, Loading, Text, fmtDate } from '@/components/ui';
 import { api, type DocSummary } from '@/lib/api';
 import { colors, radius } from '@/theme';
 
@@ -12,10 +12,26 @@ type Props = {
   icon: keyof typeof Ionicons.glyphMap;
   emptyTitle: string;
   emptyHint: string;
+  newLabel: string;
+  onNew: () => void;
+  onOpen: (item: DocSummary) => void;
 };
 
+// يعرض قائمة خيارات أصلية (Action Sheet في الآيفون)
+export function chooseAction(title: string, options: { label: string; destructive?: boolean; onPress: () => void }[]) {
+  if (Platform.OS === 'ios') {
+    const labels = [...options.map((o) => o.label), 'إلغاء'];
+    ActionSheetIOS.showActionSheetWithOptions(
+      { title, options: labels, cancelButtonIndex: labels.length - 1, destructiveButtonIndex: options.findIndex((o) => o.destructive) },
+      (i) => { if (i < options.length) options[i].onPress(); },
+    );
+  } else {
+    Alert.alert(title, undefined, [...options.map((o) => ({ text: o.label, onPress: o.onPress, style: o.destructive ? 'destructive' as const : 'default' as const })), { text: 'إلغاء', style: 'cancel' }]);
+  }
+}
+
 // قائمة مستندات المعلم (ملفات الإنجاز، الشهادات، الكشوف) — تتحدث عند فتح الشاشة وبالسحب للأسفل
-export function DocList({ path, listKey, icon, emptyTitle, emptyHint }: Props) {
+export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, onNew, onOpen }: Props) {
   const [items, setItems] = useState<DocSummary[] | null>(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -39,27 +55,51 @@ export function DocList({ path, listKey, icon, emptyTitle, emptyHint }: Props) {
     setRefreshing(false);
   };
 
+  const duplicate = async (item: DocSummary) => {
+    try { await api('POST', `${path}/${item.id}/duplicate`); await load(); } catch (e: any) { Alert.alert('تعذر النسخ', e.message); }
+  };
+
+  const remove = (item: DocSummary) =>
+    Alert.alert('تأكيد الحذف', `متأكد تبي تحذف «${item.title}»؟ ما تقدر ترجعه بعد الحذف.`, [
+      { text: 'إلغاء', style: 'cancel' },
+      {
+        text: 'احذف', style: 'destructive',
+        onPress: async () => {
+          try { await api('DELETE', `${path}/${item.id}`); setItems((xs) => (xs || []).filter((x) => x.id !== item.id)); } catch (e: any) { Alert.alert('تعذر الحذف', e.message); }
+        },
+      },
+    ]);
+
+  const menu = (item: DocSummary) => chooseAction(item.title, [
+    { label: 'فتح وتعديل', onPress: () => onOpen(item) },
+    { label: 'نسخ', onPress: () => duplicate(item) },
+    { label: 'حذف', destructive: true, onPress: () => remove(item) },
+  ]);
+
   if (!items) return <Loading />;
 
   return (
     <FlatList
       data={items}
       keyExtractor={(it) => String(it.id)}
-      contentContainerStyle={[styles.list, !items.length && { flex: 1 }]}
+      contentContainerStyle={[styles.list, !items.length && { flexGrow: 1 }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.brand} />}
-      ListHeaderComponent={<ErrorBox message={error} />}
+      ListHeaderComponent={<><ErrorBox message={error} /><Button title={`＋ ${newLabel}`} onPress={onNew} style={{ marginBottom: 4 }} /></>}
       ListEmptyComponent={error ? undefined : <Empty title={emptyTitle} hint={emptyHint} />}
       renderItem={({ item }) => (
         <Pressable
           style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
-          onPress={() => Alert.alert(item.title, 'التعديل من التطبيق جاي في التحديث القادم.')}
+          onPress={() => onOpen(item)}
+          onLongPress={() => menu(item)}
         >
           <View style={styles.icon}><Ionicons name={icon} size={22} color={colors.brandDark} /></View>
           <View style={{ flex: 1 }}>
             <Text weight="bold" style={{ fontSize: 16 }} numberOfLines={1}>{item.title}</Text>
             <Text muted style={{ fontSize: 13 }}>آخر تعديل: {fmtDate(item.updated_at)}</Text>
           </View>
-          <Ionicons name="chevron-back" size={18} color={colors.muted} />
+          <Pressable hitSlop={10} onPress={() => menu(item)} accessibilityLabel="خيارات">
+            <Ionicons name="ellipsis-horizontal-circle-outline" size={26} color={colors.muted} />
+          </Pressable>
         </Pressable>
       )}
     />

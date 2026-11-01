@@ -51,7 +51,15 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "يحتاج مركز المعلم الوصول للصور لإضافتها في ملف الإنجاز والشهادات.",
+          "cameraPermission": "يحتاج مركز المعلم الكاميرا لتصوير الشواهد وإضافتها في ملف الإنجاز.",
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
