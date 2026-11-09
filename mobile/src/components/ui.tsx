@@ -15,6 +15,12 @@ export function Text({ weight = 'regular', muted, style, ...props }: TextProps &
   return <RNText {...props} style={[styles.text, { fontFamily: fonts[weight] }, muted && { color: colors.muted }, style]} />;
 }
 
+// عنوان الشاشة في الشريط العلوي: خط تجوّل حروفه أطول من المساحة الافتراضية للعنوان
+// (تنقص نقاط الحروف مثل ث وش من فوق)، فنعطيه ارتفاع سطر أكبر
+export function HeaderTitle({ children }: { children: string }) {
+  return <Text weight="bold" numberOfLines={1} style={{ fontSize: 17, lineHeight: 30, paddingTop: 3, color: colors.ink }}>{children}</Text>;
+}
+
 export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.card, style]}>{children}</View>;
 }

@@ -4,6 +4,7 @@ import { DevSettings, I18nManager, Platform, Pressable, Text, View } from 'react
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { HeaderTitle } from '@/components/ui';
 import { AuthProvider, useAuth } from '@/lib/auth';
 import { colors, fonts } from '@/theme';
 
@@ -47,6 +48,7 @@ function RootStack() {
       screenOptions={{
         headerTintColor: colors.brandDark,
         headerTitleStyle: { fontFamily: fonts.bold, color: colors.ink },
+        headerTitle: ({ children }) => <HeaderTitle>{children}</HeaderTitle>,
         headerBackButtonDisplayMode: 'minimal',
         // رأس ثابت غير شفاف: في iOS الجديد الرأس شفاف افتراضيًا فيختفي أعلى المحتوى تحته
         headerTransparent: false,

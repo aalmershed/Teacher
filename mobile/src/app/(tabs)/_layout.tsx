@@ -1,6 +1,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Tabs } from 'expo-router';
 import type { ColorValue } from 'react-native';
+import { HeaderTitle } from '@/components/ui';
 import { colors, fonts } from '@/theme';
 
 const icon = (name: keyof typeof Ionicons.glyphMap) =>
@@ -16,6 +17,7 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: { fontFamily: fonts.medium, fontSize: 11 },
         headerTitleStyle: { fontFamily: fonts.bold, color: colors.ink },
+        headerTitle: ({ children }) => <HeaderTitle>{children}</HeaderTitle>,
         headerStyle: { backgroundColor: colors.bg },
         headerShadowVisible: false,
         sceneStyle: { backgroundColor: colors.bg },
