@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FlatList, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { RichText } from '@/components/rich-text';
-import { Text } from '@/components/ui';
+import { Text, rtlInput } from '@/components/ui';
 import { FIELD_OPTIONS, isNameField, type Block } from '@/lib/project-types';
 import { colors, fonts } from '@/theme';
 
@@ -12,7 +12,7 @@ export type BlockOf<T extends Block['type']> = Extract<Block, { type: T }>;
 export type BlockProps<T extends Block['type']> = { block: BlockOf<T>; locked: boolean; update: (fn: (b: Draft<BlockOf<T>>) => void) => void };
 
 export function Field(props: React.ComponentProps<typeof TextInput>) {
-  return <TextInput placeholderTextColor="#a5aba8" {...props} style={[styles.input, props.style]} />;
+  return <TextInput placeholderTextColor="#a5aba8" {...props} style={[styles.input, rtlInput, props.style]} />;
 }
 
 export function SmallButton({ title, onPress, danger }: { title: string; onPress: () => void; danger?: boolean }) {
@@ -115,7 +115,7 @@ export function TableBlock({ block, update }: BlockProps<'table'>) {
             {block.columns.map((c, ci) => (
               <TextInput
                 key={ci} value={c} onChangeText={(v) => update((b) => { b.columns[ci] = v; })}
-                style={[styles.cell, styles.th]} multiline
+                style={[styles.cell, styles.th, rtlInput]} multiline
               />
             ))}
             <View style={{ width: 34 }} />
@@ -125,7 +125,7 @@ export function TableBlock({ block, update }: BlockProps<'table'>) {
               {block.columns.map((_, ci) => (
                 <TextInput
                   key={ci} value={r[ci] ?? ''} onChangeText={(v) => update((b) => { b.rows[ri][ci] = v; })}
-                  style={styles.cell} multiline
+                  style={[styles.cell, rtlInput]} multiline
                 />
               ))}
               <View style={{ width: 34, alignItems: 'center', justifyContent: 'center' }}>

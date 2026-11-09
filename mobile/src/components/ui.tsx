@@ -1,9 +1,13 @@
 import type { ComponentRef, Ref, ReactNode } from 'react';
 import {
-  ActivityIndicator, Pressable, StyleSheet, Text as RNText, TextInput, View,
+  ActivityIndicator, I18nManager, Pressable, StyleSheet, Text as RNText, TextInput, View,
   type StyleProp, type TextInputProps, type TextProps, type TextStyle, type ViewStyle,
 } from 'react-native';
 import { colors, fonts, radius } from '@/theme';
+
+// في التطبيق الحقيقي الواجهة من اليمين لليسار (RTL) فالحقول تتمحاذى يمين تلقائيًا؛
+// إذا الواجهة من اليسار (مثل Expo Go أو المتصفح) نجبر الكتابة العربية على اليمين
+export const rtlInput: TextStyle | undefined = I18nManager.isRTL ? undefined : { textAlign: 'right', writingDirection: 'rtl' };
 
 type Weight = 'regular' | 'medium' | 'bold' | 'extraBold';
 
@@ -54,7 +58,7 @@ export function Input({ label, ltr, style, ref, ...props }: InputProps) {
         ref={ref}
         placeholderTextColor="#a5aba8"
         {...props}
-        style={[styles.input, ltr && ({ writingDirection: 'ltr' } as TextStyle), style]}
+        style={[styles.input, ltr ? ({ writingDirection: 'ltr', ...(I18nManager.isRTL ? {} : { textAlign: 'left' }) } as TextStyle) : rtlInput, style]}
       />
     </View>
   );

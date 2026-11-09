@@ -1,6 +1,6 @@
 import { Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold, useFonts } from '@expo-google-fonts/tajawal';
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { DevSettings, I18nManager, Platform, Pressable, Text, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -8,6 +8,14 @@ import { AuthProvider, useAuth } from '@/lib/auth';
 import { colors, fonts } from '@/theme';
 
 SplashScreen.preventAutoHideAsync();
+
+// التطبيق المنشور يبدأ من اليمين لليسار من إعدادات app.json (forcesRTL). في التجربة عن طريق Expo Go
+// هذا الإعداد ما يطبق، فنفعّل الاتجاه العربي ونعيد التحميل مرة وحدة حتى تطابق التجربة التطبيق الحقيقي.
+if (__DEV__ && Platform.OS !== 'web' && !I18nManager.isRTL) {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(true);
+  setTimeout(() => DevSettings.reload(), 50);
+}
 
 // أي خطأ غير متوقع في شاشة يعرض رسالة مع زر إعادة المحاولة بدل ما يقفل التطبيق
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
