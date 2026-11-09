@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, loadToken, saveToken, setUnauthorizedHandler, type User } from './api';
+import { loadSchedule, resetSchedule } from './schedule';
 
 type AuthState = {
   user: User | null;
@@ -19,7 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clear = useCallback(async () => {
     await saveToken(null);
     setUser(null);
+    resetSchedule(); // يلغي تنبيهات الحصص عند الخروج
   }, []);
+
+  // بعد الدخول نحمّل جدولي ونرتب تنبيهاته، لأن المعلم ممكن سوّى جدوله من الموقع
+  const userId = user?.id;
+  useEffect(() => { if (userId) loadSchedule(); }, [userId]);
 
   useEffect(() => {
     setUnauthorizedHandler(() => { clear(); });

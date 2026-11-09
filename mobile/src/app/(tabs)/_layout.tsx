@@ -22,6 +22,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'ملفاتي', tabBarIcon: icon('folder-open-outline') }} />
+      <Tabs.Screen name="schedule" options={{ title: 'جدولي', tabBarIcon: icon('calendar-outline') }} />
       <Tabs.Screen name="certificates" options={{ title: 'الشهادات', tabBarIcon: icon('ribbon-outline') }} />
       <Tabs.Screen name="sheets" options={{ title: 'الكشوف', tabBarIcon: icon('grid-outline') }} />
       <Tabs.Screen name="account" options={{ title: 'حسابي', tabBarIcon: icon('person-circle-outline') }} />
