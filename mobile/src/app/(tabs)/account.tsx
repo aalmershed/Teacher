@@ -73,7 +73,7 @@ export default function Account() {
 
   return (
     <>
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card>
           <Text weight="extraBold" style={{ fontSize: 20 }}>{user.name}</Text>
           <Text muted>{user.email}</Text>

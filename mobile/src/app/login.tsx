@@ -28,7 +28,7 @@ export default function Login() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={styles.brand}>
             <View style={styles.mark}><Text weight="extraBold" style={styles.markText}>م</Text></View>
             <Text weight="extraBold" style={styles.title}>مركز المعلم</Text>

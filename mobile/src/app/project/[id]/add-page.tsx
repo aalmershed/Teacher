@@ -33,7 +33,7 @@ export default function AddPage() {
   if (!project) return null;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <Card>
         <Input label="عنوان الصفحة" value={title} onChangeText={setTitle} placeholder="صفحة جديدة" autoFocus />
         <Text weight="bold" style={{ marginBottom: 8 }}>حجم الصفحة</Text>

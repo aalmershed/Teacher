@@ -15,7 +15,7 @@ export function RichText({ html, onChange }: { html: string; onChange: (html: st
 
   return (
     <View style={{ height }}>
-      <WebView
+      <WebView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
         originWhitelist={['*']}
         source={source}
         scrollEnabled={false}

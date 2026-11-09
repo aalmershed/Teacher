@@ -26,7 +26,7 @@ export default function NewProject() {
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 14 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <Card>
         <ErrorBox message={error} />
         <Text muted style={{ marginBottom: 14 }}>يجيك ملف جاهز فيه كل صفحات ملف الإنجاز بعناوينها، وتعدّل عليه براحتك.</Text>

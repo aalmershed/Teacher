@@ -35,7 +35,7 @@ export default function ProjectEditor() {
   return (
     <>
       <Stack.Screen options={{ title: project.title || 'ملف الإنجاز', headerRight: () => <SaveBadge status={status} /> }} />
-      <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card>
           <Input label="اسم الملف" value={project.title} onChangeText={(v) => updateProject((d) => { d.title = v; })} />
           <Text weight="bold" style={{ marginBottom: 8 }}>شكل الصفحات</Text>

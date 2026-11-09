@@ -24,7 +24,7 @@ export default function Register() {
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <Card>
           <ErrorBox message={error} />
           <Input label="الاسم الكامل" value={form.name} onChangeText={set('name')} placeholder="مثال: نورة السبيعي" autoComplete="name" textContentType="name" />

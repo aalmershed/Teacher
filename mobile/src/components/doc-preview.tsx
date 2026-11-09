@@ -28,7 +28,7 @@ export function DocPreview({ renderer, data, options }: Props) {
 
   return (
     <View style={[styles.frame, { height: width ? (width * 794) / 1123 : 200 }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
-      <WebView
+      <WebView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
         ref={ref}
         originWhitelist={['*']}
         source={source}

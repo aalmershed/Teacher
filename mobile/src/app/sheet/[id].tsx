@@ -41,7 +41,7 @@ export default function SheetEditor() {
     <>
       <Stack.Screen options={{ title: doc.title || 'كشف متابعة', headerRight: () => <SaveBadge status={status} /> }} />
       <>
-        <ScrollView ref={scroll} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView showsVerticalScrollIndicator={false} ref={scroll} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           {current === 'setup' ? (
             <>
               <View style={styles.pv}>

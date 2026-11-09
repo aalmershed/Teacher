@@ -83,7 +83,7 @@ export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, 
   if (!items) return <Loading />;
 
   return (
-    <FlatList
+    <FlatList showsVerticalScrollIndicator={false}
       data={items}
       keyExtractor={(it) => String(it.id)}
       contentContainerStyle={[styles.list, !items.length && { flexGrow: 1 }]}

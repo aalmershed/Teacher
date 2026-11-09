@@ -38,7 +38,7 @@ export default function ProjectPreview() {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#8a8f94' }} edges={['bottom']}>
       <Stack.Screen options={{ title: 'معاينة' }} />
       {error ? <Empty title="تعذر فتح المعاينة" hint={error} /> : ready ? (
-        <WebView
+        <WebView showsVerticalScrollIndicator={false} showsHorizontalScrollIndicator={false}
           source={{ uri: `${API_URL}/api/projects/${id}/preview`, headers: authHeaders() }}
           injectedJavaScript={FIT}
           originWhitelist={['*']}

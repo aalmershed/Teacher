@@ -33,7 +33,7 @@ export default function Forgot() {
   if (!info) return <Loading />;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
       <Card>
         <ErrorBox message={error} />
         {sent ? (

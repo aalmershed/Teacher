@@ -53,7 +53,7 @@ export function OptionPicker({ label, value, options, onChange, emptyLabel = 'ب
             <Text weight="extraBold" style={{ fontSize: 17 }}>{label}</Text>
             <Pressable onPress={() => setOpen(false)} hitSlop={10}><Text weight="bold" style={{ color: colors.brandDark }}>إغلاق</Text></Pressable>
           </View>
-          <FlatList
+          <FlatList showsVerticalScrollIndicator={false}
             data={['', ...all]}
             keyExtractor={(o) => o || '-'}
             renderItem={({ item }) => (
@@ -109,7 +109,7 @@ const CELL_W = 130;
 export function TableBlock({ block, update }: BlockProps<'table'>) {
   return (
     <View style={{ gap: 10 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ paddingBottom: 4 }}>
+      <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 4 }}>
         <View>
           <View style={styles.trow}>
             {block.columns.map((c, ci) => (

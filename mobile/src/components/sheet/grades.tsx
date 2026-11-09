@@ -81,7 +81,7 @@ export function SheetGrades({ d, rev, id, title, onEditSetup }: { d: SheetData; 
 
       <Text muted style={{ fontSize: 13 }}>اختر البند، وبعدين اضغط على الخانات الصغيرة لوضع ✓ أو ✗، واكتب الدرجة. المجموع والمتوسط يتحسبون تلقائيًا، والحفظ تلقائي.</Text>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView showsVerticalScrollIndicator={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {subs.map((s) => (
           <Pressable key={s.id} onPress={() => setSubId(s.id)} style={[styles.chip, s.id === sub?.id && styles.chipOn]}>
             <Text weight="bold" style={{ fontSize: 13, color: s.id === sub?.id ? '#fff' : colors.ink }}>{s.title || s.group || 'بند'}</Text>

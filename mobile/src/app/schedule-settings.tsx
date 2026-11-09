@@ -65,7 +65,7 @@ export default function ScheduleSettings() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.wrap}>
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap}>
       <Card style={{ gap: 12 }}>
         <Text weight="extraBold" style={styles.title}>🔔 تنبيه قبل الحصة</Text>
         <View style={styles.between}>

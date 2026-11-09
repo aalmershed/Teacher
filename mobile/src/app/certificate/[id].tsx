@@ -36,7 +36,7 @@ export default function CertificateEditor() {
     <>
       <Stack.Screen options={{ title: doc.title || 'شهادة', headerRight: () => <SaveBadge status={status} /> }} />
       <>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <View style={styles.pv}>
             <DocPreview renderer="CertRender" data={d} options={{ index: shown, watermark }} />
             {names.length > 1 ? (

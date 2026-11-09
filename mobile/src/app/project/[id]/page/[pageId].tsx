@@ -87,7 +87,7 @@ export default function PageEditor() {
         }}
       />
       <>
-        <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           <Card style={{ gap: 12 }}>
             <Field
               value={page.title} onChangeText={(v) => updatePage((p) => { p.title = v; })}

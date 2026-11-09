@@ -50,7 +50,7 @@ function CellEditor({ target, onClose }: { target: { day: number; p: number }; o
           <Text weight="extraBold" style={{ fontSize: 16 }}>{DAY_NAMES[target.day]} · الحصة {AR(target.p + 1)} ({fmt12(per.start)})</Text>
           <Pressable onPress={save} hitSlop={10}><Text weight="bold" style={{ color: colors.brandDark }}>حفظ</Text></Pressable>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           {fieldWithChips('klass', 'الصف والفصل', 'مثال: أولى ابتدائي أ')}
           {fieldWithChips('subject', 'المادة', 'مثال: الرياضيات')}
           {fieldWithChips('place', 'المدرسة أو القاعة (اختياري)', 'مثال: الإمام السيوطي')}
@@ -86,7 +86,7 @@ export default function Schedule() {
 
   return (
     <>
-      <ScrollView
+      <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.wrap}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadSchedule(); setRefreshing(false); }} tintColor={colors.brand} />}
       >
