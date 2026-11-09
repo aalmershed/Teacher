@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActionSheetIOS, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { Button, Empty, ErrorBox, Loading, Text, fmtDate } from '@/components/ui';
 import { api, type DocSummary } from '@/lib/api';
 import { downloadPdf } from '@/lib/pdf';
@@ -91,20 +92,33 @@ export function DocList({ path, listKey, icon, emptyTitle, emptyHint, newLabel, 
       ListHeaderComponent={<><ErrorBox message={error} /><Button title={`＋ ${newLabel}`} onPress={onNew} style={{ marginBottom: 4 }} /></>}
       ListEmptyComponent={error ? undefined : <Empty title={emptyTitle} hint={emptyHint} />}
       renderItem={({ item }) => (
-        <Pressable
-          style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
-          onPress={() => onOpen(item)}
-          onLongPress={() => menu(item)}
+        // اسحب البطاقة لليسار يطلع زر حذف (مثل تطبيق الملاحظات)، والحذف نفسه يطلب تأكيد
+        <ReanimatedSwipeable
+          friction={1.6}
+          rightThreshold={40}
+          overshootRight={false}
+          renderRightActions={(_p, _t, methods) => (
+            <Pressable style={styles.swipeAction} onPress={() => { methods.close(); remove(item); }} accessibilityLabel={`حذف ${item.title}`}>
+              <View style={styles.swipeBtn}><Ionicons name="trash-outline" size={24} color="#fff" /></View>
+              <Text weight="bold" style={{ fontSize: 12, color: colors.danger, marginTop: 4 }}>حذف</Text>
+            </Pressable>
+          )}
         >
-          <View style={styles.icon}><Ionicons name={icon} size={22} color={colors.brandDark} /></View>
-          <View style={{ flex: 1 }}>
-            <Text weight="bold" style={{ fontSize: 16 }} numberOfLines={1}>{item.title}</Text>
-            <Text muted style={{ fontSize: 13 }}>آخر تعديل: {fmtDate(item.updated_at)}</Text>
-          </View>
-          <Pressable hitSlop={10} onPress={() => menu(item)} accessibilityLabel="خيارات">
-            <Ionicons name="ellipsis-horizontal-circle-outline" size={26} color={colors.muted} />
+          <Pressable
+            style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            onPress={() => onOpen(item)}
+            onLongPress={() => menu(item)}
+          >
+            <View style={styles.icon}><Ionicons name={icon} size={22} color={colors.brandDark} /></View>
+            <View style={{ flex: 1 }}>
+              <Text weight="bold" style={{ fontSize: 16 }} numberOfLines={1}>{item.title}</Text>
+              <Text muted style={{ fontSize: 13 }}>آخر تعديل: {fmtDate(item.updated_at)}</Text>
+            </View>
+            <Pressable hitSlop={10} onPress={() => menu(item)} accessibilityLabel="خيارات">
+              <Ionicons name="ellipsis-horizontal-circle-outline" size={26} color={colors.muted} />
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </ReanimatedSwipeable>
       )}
     />
   );
@@ -117,4 +131,6 @@ const styles = StyleSheet.create({
     borderRadius: radius, borderWidth: 1, borderColor: colors.line, padding: 14,
   },
   icon: { width: 42, height: 42, borderRadius: 12, backgroundColor: colors.brandLight, alignItems: 'center', justifyContent: 'center' },
+  swipeAction: { width: 86, alignItems: 'center', justifyContent: 'center' },
+  swipeBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#f2545b', alignItems: 'center', justifyContent: 'center' },
 });

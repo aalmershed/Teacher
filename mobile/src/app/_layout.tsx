@@ -1,5 +1,6 @@
 import { Tajawal_400Regular, Tajawal_500Medium, Tajawal_700Bold, Tajawal_800ExtraBold, useFonts } from '@expo-google-fonts/tajawal';
 import { Stack, type ErrorBoundaryProps } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { DevSettings, I18nManager, Platform, Pressable, Text, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -78,10 +79,13 @@ function RootStack() {
 }
 
 export default function RootLayout() {
+  // GestureHandlerRootView مطلوب لحركات السحب (مثل سحب البطاقة للحذف)
   return (
-    <AuthProvider>
-      <StatusBar style="dark" />
-      <RootStack />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <StatusBar style="dark" />
+        <RootStack />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
