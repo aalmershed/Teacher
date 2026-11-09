@@ -16,6 +16,7 @@ const SheetRender = require('./sheet-render');
 const payments = require('./payments');
 const seo = require('./seo');
 const mail = require('./mail');
+const Schedule = require('./schedule');
 
 const PORT = Number(process.env.PORT || 3000);
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').toLowerCase();
@@ -492,6 +493,25 @@ docRoutes({
   },
 });
 
+// ---------- جدولي ----------
+// جدول واحد لكل معلم؛ يُنشأ بالقيم الافتراضية أول مرة يُفتح
+app.get('/api/schedule', requireAuth, (req, res) => {
+  const row = db.prepare('SELECT data, updated_at FROM schedules WHERE user_id = ?').get(req.user.id);
+  res.json({ schedule: row ? { data: Schedule.normalize(JSON.parse(row.data)), updated_at: row.updated_at } : { data: Schedule.normalize(Schedule.DEFAULTS), updated_at: null } });
+});
+
+app.put('/api/schedule', requireAuth, (req, res) => {
+  const row = db.prepare('SELECT updated_at FROM schedules WHERE user_id = ?').get(req.user.id);
+  // نفس فحص التعارض في باقي المستندات: لا نكتب فوق تعديل من جهاز آخر إلا بموافقة المعلم
+  if (row && req.body.baseUpdatedAt !== undefined && req.body.baseUpdatedAt !== row.updated_at) {
+    return res.status(409).json({ error: 'تم تعديل الجدول من جهاز آخر', code: 'CONFLICT', updated_at: row.updated_at });
+  }
+  const data = Schedule.normalize(req.body.data);
+  db.prepare(`INSERT INTO schedules (user_id, data, updated_at) VALUES (?, ?, datetime('now'))
+    ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at`).run(req.user.id, JSON.stringify(data));
+  res.json({ ok: true, data, updated_at: db.prepare('SELECT updated_at FROM schedules WHERE user_id = ?').get(req.user.id).updated_at });
+});
+
 // ---------- الصور ----------
 const upload = multer({
   storage: multer.diskStorage({
@@ -829,7 +849,7 @@ app.get('/.well-known/apple-developer-merchantid-domain-association', (_req, res
 app.get('/robots.txt', (req, res) => res.type('text/plain').send(seo.robots(baseUrl(req))));
 app.get('/sitemap.xml', (req, res) => res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(seo.sitemap(baseUrl(req), PUBLIC)));
 app.use(express.static(PUBLIC, { extensions: ['html'] }));
-const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html', '/privacy': 'privacy.html' };
+const pageRoutes = { '/login': 'auth.html', '/register': 'auth.html', '/forgot': 'forgot.html', '/reset': 'forgot.html', '/app': 'app.html', '/subscribe': 'subscribe.html', '/admin': 'admin.html', '/privacy': 'privacy.html', '/schedule': 'schedule.html' };
 Object.entries(pageRoutes).forEach(([route, file]) => app.get(route, (_req, res) => res.sendFile(path.join(PUBLIC, file))));
 app.get('/editor/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'editor.html')));
 app.get('/certificate/:id', (_req, res) => res.sendFile(path.join(PUBLIC, 'certificate.html')));

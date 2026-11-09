@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>جدولي — مركز المعلم</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#5f978f">
+<link rel="icon" href="/icon.svg">
+<link rel="stylesheet" href="/assets/style.css">
+<style>
+.bar{display:flex;align-items:center;gap:10px}
+.bar h1{font-size:1.15em;margin:0}
+.save-st{font-size:.85em;color:var(--muted);white-space:nowrap}
+main{padding:20px 0 60px}
+.next{display:flex;align-items:center;gap:14px;padding:14px 18px;margin-bottom:16px;background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;border:0}
+.next .ic{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:1.3em;flex:none}
+.next b{display:block;font-size:1.05em}
+.next span{display:block;opacity:.9;font-size:.92em;margin-top:2px}
+.wrap{overflow-x:auto;padding-bottom:6px}
+.tt{display:grid;gap:8px}
+.dh{background:var(--brand-l);color:var(--brand-d);border-radius:12px;padding:10px 4px;text-align:center;font-weight:800}
+.dh.today{background:var(--brand);color:#fff}
+.ph{background:var(--brand-l);color:var(--brand-d);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;font-size:1.15em;padding:6px 2px;line-height:1.2}
+.ph small{font-size:.58em;font-weight:500;color:var(--muted);margin-top:4px;white-space:nowrap}
+.ph.now{background:var(--accent);color:#fff}.ph.now small{color:#fff}
+.cell{min-height:104px;border-radius:14px;border:1.5px dashed #d9dfdc;background:#f7f8f7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 6px;text-align:center;cursor:pointer;transition:.15s;font:inherit;color:inherit}
+.cell:hover{border-color:var(--brand)}
+.cell .plus{font-size:1.5em;color:#c3cbc7;line-height:1}
+.cell.full{border:1.5px solid #b9d9d2;background:#eef6f4;border-style:solid}
+.cell.full.now{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l)}
+.cell b{font-size:.98em;line-height:1.35}
+.cell .sub{font-size:.85em;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cell .pl{font-size:.72em;color:#9aa29f;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hint{font-size:.85em;color:var(--muted);margin-top:12px}
+.days{display:flex;flex-wrap:wrap;gap:8px}
+.days label{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:.4em .7em;cursor:pointer}
+.prow{display:grid;grid-template-columns:26px minmax(0,1fr) minmax(0,1fr) 32px;gap:6px;align-items:center;margin-bottom:8px}
+.prow .input{min-width:0;padding:.5em .45em;font-size:.92em}
+.prow b{text-align:center;color:var(--brand-d)}
+.notify{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.notify select{width:auto}
+@media (max-width:560px){.save-st{display:none}.cell{min-height:96px;padding:6px 2px;border-radius:12px}.cell b{font-size:.78em}.cell .sub{font-size:.72em}.cell .pl{font-size:.62em}.tt{gap:5px}.dh{font-size:.8em;padding:8px 2px}.ph{font-size:1em}.ph small{font-size:.5em}.next{padding:12px 14px}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="container bar">
+    <a class="btn ghost sm" href="/app" title="رجوع">→</a>
+    <h1>جدولي</h1>
+    <span class="save-st" id="saveSt"></span>
+    <div class="spacer"></div>
+    <button class="btn sm" id="setBtn">⚙ أوقات الحصص</button>
+  </div>
+</header>
+
+<main class="container">
+  <div class="card next" id="next" hidden><span class="ic">⏰</span><div><b id="nextT"></b><span id="nextS"></span></div></div>
+  <div class="wrap"><div class="tt" id="tt"></div></div>
+  <p class="hint">اضغط على أي خانة لإضافة حصة أو تعديلها. الحفظ تلقائي، والجدول نفسه يظهر لك في تطبيق مركز المعلم على الجوال.</p>
+</main>
+
+<div class="modal-bg" id="cellModal">
+  <div class="modal">
+    <h3 id="cellTitle">إضافة حصة</h3>
+    <div class="field"><label for="c-klass">الصف والفصل</label><input class="input" id="c-klass" maxlength="40" list="dl-klass" placeholder="مثال: أولى ابتدائي أ"></div>
+    <div class="field"><label for="c-subject">المادة</label><input class="input" id="c-subject" maxlength="60" list="dl-subject" placeholder="مثال: الرياضيات"></div>
+    <div class="field"><label for="c-place">المدرسة أو القاعة (اختياري)</label><input class="input" id="c-place" maxlength="60" list="dl-place" placeholder="مثال: الإمام السيوطي"></div>
+    <datalist id="dl-klass"></datalist><datalist id="dl-subject"></datalist><datalist id="dl-place"></datalist>
+    <div class="modal-actions">
+      <button class="btn primary" id="cSave">حفظ</button>
+      <button class="btn danger" id="cDel">حذف الحصة</button>
+      <button class="btn" data-close>إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="setModal">
+  <div class="modal">
+    <h3>أوقات الحصص</h3>
+    <div class="field"><label>أيام الدراسة</label><div class="days" id="days"></div></div>
+    <div class="field"><label>الحصص (وقت البداية والنهاية)</label><div id="periods"></div>
+      <button class="btn sm" id="addP" type="button">＋ إضافة حصة</button></div>
+    <div class="field"><label>تنبيه الجوال</label>
+      <div class="notify"><label style="display:flex;align-items:center;gap:6px;font-weight:500"><input type="checkbox" id="nOn"> نبّهني قبل الحصة بـ</label>
+        <select class="input" id="nBefore"><option value="5">5 دقائق</option><option value="10">10 دقائق</option><option value="15">15 دقيقة</option></select></div>
+      <small class="muted">التنبيه يوصلك على الجوال عن طريق تطبيق مركز المعلم، بعد ما تسمح له بالإشعارات.</small></div>
+    <div class="modal-actions"><button class="btn primary" data-close>تم</button></div>
+  </div>
+</div>
+
+<script src="/assets/js/common.js"></script>
+<script>
+const $ = (x) => document.getElementById(x);
+const DAY_NAMES = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const AR_NUM = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d]);
+let data = null, updatedAt = null, saveTimer = null, editing = null;
+
+const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fromMin = (m) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+function fmt12(t) {
+  const [h, m] = t.split(':').map(Number);
+  return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'ص' : 'م'}`;
+}
+
+// الحصة الحالية أو القادمة حسب وقت الجهاز
+function upcoming() {
+  const now = new Date(), today = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  for (let k = 0; k < 7; k++) {
+    const day = (today + k) % 7;
+    if (!data.days.includes(day)) continue;
+    for (let p = 0; p < data.periods.length; p++) {
+      const c = data.cells[`${day}-${p}`]; if (!c) continue;
+      const s = toMin(data.periods[p].start), e = toMin(data.periods[p].end);
+      if (k === 0 && e <= mins) continue;
+      return { day, p, c, k, now: k === 0 && s <= mins && mins < e, inMin: k === 0 ? s - mins : null };
+    }
+  }
+  return null;
+}
+
+function render() {
+  const now = new Date(), today = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+  const cols = data.days;
+  const tt = $('tt');
+  // حتى 5 أيام تدخل في عرض الجوال بدون تمرير؛ أكثر من كذا يصير فيه تمرير أفقي
+  tt.style.gridTemplateColumns = `46px repeat(${cols.length}, minmax(0, 1fr))`;
+  tt.style.minWidth = cols.length > 5 ? `${46 + cols.length * 92}px` : '';
+  let h = '<div></div>' + cols.map((d) => `<div class="dh ${d === today ? 'today' : ''}">${DAY_NAMES[d]}</div>`).join('');
+  data.periods.forEach((per, p) => {
+    const isNow = toMin(per.start) <= mins && mins < toMin(per.end);
+    h += `<div class="ph ${isNow ? 'now' : ''}">${AR_NUM(p + 1)}<small>${fmt12(per.start)}</small></div>`;
+    cols.forEach((d) => {
+      const c = data.cells[`${d}-${p}`];
+      const live = c && isNow && d === today;
+      h += c
+        ? `<button class="cell full ${live ? 'now' : ''}" data-k="${d}-${p}"><b>${esc(c.klass || c.subject)}</b>${c.klass && c.subject ? `<span class="sub">${esc(c.subject)}</span>` : ''}${c.place ? `<span class="pl">${esc(c.place)}</span>` : ''}</button>`
+        : `<button class="cell" data-k="${d}-${p}" aria-label="إضافة حصة"><span class="plus">＋</span></button>`;
+    });
+  });
+  tt.innerHTML = h;
+
+  const u = upcoming();
+  $('next').hidden = !u;
+  if (u) {
+    const per = data.periods[u.p];
+    const what = [u.c.subject, u.c.klass].filter(Boolean).join(' — ');
+    $('nextT').textContent = u.now ? `الحصة الحالية: ${what}` : `حصتك القادمة: ${what}`;
+    const when = u.now ? `تنتهي ${fmt12(per.end)}` : u.k === 0 ? `اليوم ${fmt12(per.start)}${u.inMin <= 60 ? ` (بعد ${AR_NUM(u.inMin)} دقيقة)` : ''}` : `${u.k === 1 ? 'بكرة' : DAY_NAMES[u.day]} ${fmt12(per.start)}`;
+    $('nextS').textContent = [`الحصة ${AR_NUM(u.p + 1)}`, when, u.c.place].filter(Boolean).join(' · ');
+  }
+}
+
+// ---------- تعديل حصة ----------
+function fillLists() {
+  const vals = (f) => [...new Set(Object.values(data.cells).map((c) => c[f]).filter(Boolean))];
+  ['klass', 'subject', 'place'].forEach((f) => { $('dl-' + f).innerHTML = vals(f).map((v) => `<option value="${esc(v)}">`).join(''); });
+}
+$('tt').addEventListener('click', (e) => {
+  const b = e.target.closest('.cell'); if (!b) return;
+  editing = b.dataset.k;
+  const [d, p] = editing.split('-').map(Number);
+  const c = data.cells[editing] || {};
+  $('cellTitle').textContent = `${DAY_NAMES[d]} · الحصة ${AR_NUM(p + 1)} (${fmt12(data.periods[p].start)})`;
+  $('c-klass').value = c.klass || ''; $('c-subject').value = c.subject || ''; $('c-place').value = c.place || '';
+  $('cDel').style.display = data.cells[editing] ? '' : 'none';
+  fillLists();
+  openModal('cellModal');
+  setTimeout(() => $('c-klass').focus(), 50);
+});
+$('cSave').onclick = () => {
+  const c = { klass: $('c-klass').value.trim(), subject: $('c-subject').value.trim(), place: $('c-place').value.trim() };
+  if (c.klass || c.subject || c.place) data.cells[editing] = c; else delete data.cells[editing];
+  closeModal('cellModal'); changed();
+};
+$('cDel').onclick = () => { delete data.cells[editing]; closeModal('cellModal'); changed(); };
+document.querySelectorAll('#cellModal input').forEach((i) => i.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('cSave').click(); }));
+
+// ---------- الإعدادات: الأيام والأوقات والتنبيه ----------
+function renderSettings() {
+  $('days').innerHTML = [0, 1, 2, 3, 4, 5, 6].map((d) => `<label><input type="checkbox" value="${d}" ${data.days.includes(d) ? 'checked' : ''}> ${DAY_NAMES[d]}</label>`).join('');
+  $('periods').innerHTML = data.periods.map((p, i) => `<div class="prow" data-i="${i}"><b>${AR_NUM(i + 1)}</b>
+    <input class="input" type="time" data-f="start" value="${p.start}" aria-label="بداية الحصة ${i + 1}">
+    <input class="input" type="time" data-f="end" value="${p.end}" aria-label="نهاية الحصة ${i + 1}">
+    <button class="btn sm ghost danger" data-rm="${i}" title="حذف الحصة" type="button">✕</button></div>`).join('');
+  $('nOn').checked = data.notify.enabled; $('nBefore').value = String(data.notify.before);
+}
+$('setBtn').onclick = () => { renderSettings(); openModal('setModal'); };
+$('days').addEventListener('change', () => {
+  const sel = [...$('days').querySelectorAll('input:checked')].map((i) => Number(i.value));
+  if (!sel.length) { toast('اختر يوم واحد على الأقل', 'err'); renderSettings(); return; }
+  data.days = sel; changed();
+});
+$('periods').addEventListener('change', (e) => {
+  const row = e.target.closest('[data-i]'); if (!row || !e.target.dataset.f) return;
+  if (e.target.value) { data.periods[+row.dataset.i][e.target.dataset.f] = e.target.value; changed(); }
+});
+$('periods').addEventListener('click', (e) => {
+  const i = e.target.dataset.rm; if (i === undefined) return;
+  if (data.periods.length <= 1) return toast('لازم حصة وحدة على الأقل', 'err');
+  const n = +i;
+  // نحذف حصص هذا الصف ونزيح اللي بعده لفوق
+  const cells = {};
+  Object.entries(data.cells).forEach(([k, c]) => { const [d, p] = k.split('-').map(Number); if (p < n) cells[k] = c; else if (p > n) cells[`${d}-${p - 1}`] = c; });
+  data.cells = cells; data.periods.splice(n, 1); renderSettings(); changed();
+});
+$('addP').onclick = () => {
+  if (data.periods.length >= 12) return toast('الحد الأقصى 12 حصة', 'err');
+  const last = data.periods[data.periods.length - 1];
+  const len = Math.max(30, toMin(last.end) - toMin(last.start));
+  data.periods.push({ start: last.end, end: fromMin(toMin(last.end) + len) }); renderSettings(); changed();
+};
+$('nOn').onchange = () => { data.notify.enabled = $('nOn').checked; changed(); };
+$('nBefore').onchange = () => { data.notify.before = +$('nBefore').value; changed(); };
+
+// ---------- الحفظ ----------
+function changed() { render(); $('saveSt').textContent = 'جارٍ الحفظ...'; clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); }
+async function save(force) {
+  clearTimeout(saveTimer);
+  try {
+    const r = await api('PUT', '/api/schedule', { data, ...(force ? {} : { baseUpdatedAt: updatedAt }) });
+    updatedAt = r.updated_at;
+    $('saveSt').textContent = 'تم الحفظ ✓';
+  } catch (e) {
+    if (e.code === 'CONFLICT') {
+      $('saveSt').textContent = 'تغيّر من جهاز آخر';
+      if (confirm('عدّلت جدولك من التطبيق أو من جهاز آخر. تحفظ تعديلاتك هنا فوقها؟ (اضغط إلغاء لفتح النسخة الأحدث)')) save(true); else load();
+      return;
+    }
+    $('saveSt').textContent = 'تعذر الحفظ'; toast(e.message, 'err');
+  }
+}
+async function load() {
+  const { schedule } = await api('GET', '/api/schedule');
+  data = schedule.data; updatedAt = schedule.updated_at;
+  render(); $('saveSt').textContent = 'كل التغييرات محفوظة';
+}
+
+(async () => {
+  if (!(await currentUser())) return;
+  try { await load(); } catch (e) { toast(e.message, 'err'); }
+  setInterval(() => { if (data) render(); }, 60000); // تحديث «الحصة الحالية» كل دقيقة
+})();
+</script>
+</body>
+</html>

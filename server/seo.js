@@ -130,7 +130,7 @@ ${body}
 }
 
 // صفحات خاصة لا يجب أن تظهر في نتائج البحث (لوحات المستخدم وملفات الشواهد الخاصة بالمعلمين)
-const NOINDEX = /^\/(api|app|editor|certificate|sheet|admin|subscribe|f|i|b|reset)(\/|$)/;
+const NOINDEX = /^\/(api|app|editor|certificate|sheet|schedule|admin|subscribe|f|i|b|reset)(\/|$)/;
 // صفحات عامة لكن بلا فائدة في نتائج البحث: لا تُفهرس، وتُتبع روابطها
 const LOW_VALUE = /^\/(login|forgot)\/?$/;
 

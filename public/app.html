@@ -72,6 +72,14 @@ main{padding:28px 0 60px}
 
   <h1 class="page-t">ملفاتي</h1>
 
+  <section class="sec" id="schedule">
+    <div class="sec-head" style="margin-bottom:0;padding-bottom:0;border-bottom:0">
+      <span class="sec-ic">🗓️</span>
+      <div class="sec-tx"><h2>جدولي</h2><p class="muted" id="schedNext">جدول حصصك الأسبوعي، ترجع له وقت ما تبي، ومع تنبيه على الجوال قبل الحصة.</p></div>
+      <a class="btn primary" href="/schedule">فتح جدولي</a>
+    </div>
+  </section>
+
   <section class="sec" id="files">
     <div class="sec-head">
       <span class="sec-ic">📘</span>
@@ -160,6 +168,7 @@ async function load() {
   await loadProjects();
   loadCerts();
   loadSheets();
+  loadSchedNext();
   const { themes } = await api('GET', '/api/themes');
   document.getElementById('themePick').innerHTML = themes.map((t) => `
     <div class="theme-opt ${t.id === selTheme ? 'sel' : ''}" data-id="${t.id}">
@@ -196,6 +205,21 @@ function openNew() {
   document.getElementById('newTitle').value = 'ملف إنجاز ' + year;
   openModal('newModal');
   setTimeout(() => document.getElementById('newTitle').select(), 50);
+}
+
+// حصة اليوم القادمة من جدولي (إن وُجدت) تظهر تحت عنوان القسم
+async function loadSchedNext() {
+  try {
+    const { data } = (await api('GET', '/api/schedule')).schedule;
+    const now = new Date(), day = now.getDay(), mins = now.getHours() * 60 + now.getMinutes();
+    const toMin = (t) => t.split(':').reduce((h, m) => h * 60 + Number(m));
+    if (!data.days.includes(day)) return;
+    const p = data.periods.findIndex((per, i) => data.cells[`${day}-${i}`] && toMin(per.end) > mins);
+    if (p < 0) return;
+    const c = data.cells[`${day}-${p}`], per = data.periods[p];
+    const live = toMin(per.start) <= mins;
+    document.getElementById('schedNext').textContent = `${live ? 'الحصة الحالية' : 'حصتك القادمة اليوم'}: ${[c.subject, c.klass].filter(Boolean).join(' — ')} (الحصة ${p + 1}، ${per.start})`;
+  } catch (_) { /* الجدول اختياري */ }
 }
 
 async function createProject() {

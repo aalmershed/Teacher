@@ -146,6 +146,12 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_redemptions_coupon ON coupon_redemptions(coupon_id);
 `);
 if (!cols('payments').includes('coupon_id')) db.exec('ALTER TABLE payments ADD COLUMN coupon_id INTEGER');
+// جدولي: جدول حصص واحد لكل معلم
+db.exec(`CREATE TABLE IF NOT EXISTS schedules (
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  data TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+)`);
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_token ON payments(token)');
 
 module.exports = { db, DATA_DIR };
