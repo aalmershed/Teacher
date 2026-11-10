@@ -28,7 +28,20 @@ const STORAGE_QUOTA_MB = Number(process.env.STORAGE_QUOTA_MB || 1000);
 
 const app = express();
 app.disable('x-powered-by');
-if (process.env.TRUST_PROXY) app.set('trust proxy', true);
+// نثق بوسيط واحد فقط (Caddy) حتى لا يقدر الزائر يزوّر عنوانه بترويسة X-Forwarded-For
+if (process.env.TRUST_PROXY) app.set('trust proxy', /^\d+$/.test(process.env.TRUST_PROXY) ? Number(process.env.TRUST_PROXY) : 1);
+
+// ترويسات حماية لكل الصفحات (الصفحات اللي لها سياسة خاصة مثل /f و /i تحتفظ بسياستها)
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  if (req.secure) res.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
 
 // الرابط الأساسي للموقع — يُستخدم في روابط الملفات ورموز QR
 const baseUrl = (req) => PUBLIC_URL || `${req.protocol}://${req.get('host')}`;
@@ -87,16 +100,35 @@ const requireAdmin = (req, res, next) => (req.user && req.user.is_admin ? next()
 
 const publicUser = (u) => ({ id: u.id, name: u.name, email: u.email, phone: u.phone, isAdmin: !!u.is_admin, subscription: payments.subscriptionInfo(u.id) });
 
+// ---------- حد المحاولات ----------
+// يمنع تجربة كلمات مرور كثيرة على حساب، أو إنشاء حسابات بالجملة (في الذاكرة، يكفي لخادم واحد)
+function limiter(max, windowMs) {
+  const hits = new Map();
+  setInterval(() => { const now = Date.now(); for (const [k, v] of hits) if (!v.some((t) => now - t < windowMs)) hits.delete(k); }, windowMs).unref();
+  return {
+    blocked: (key) => (hits.get(key) || []).filter((t) => Date.now() - t < windowMs).length >= max,
+    hit: (key) => { const now = Date.now(); hits.set(key, [...(hits.get(key) || []).filter((t) => now - t < windowMs), now]); },
+    clear: (key) => hits.delete(key),
+  };
+}
+const loginFailsAccount = limiter(10, 15 * 60 * 1000); // 10 محاولات خاطئة على نفس الحساب كل 15 دقيقة
+const loginFailsIp = limiter(30, 15 * 60 * 1000);      // 30 محاولة خاطئة من نفس العنوان كل 15 دقيقة
+const registerIp = limiter(10, 60 * 60 * 1000);        // 10 حسابات جديدة من نفس العنوان كل ساعة
+const TOO_MANY = { error: 'محاولات كثيرة، حاول بعد ربع ساعة' };
+
 app.post('/api/auth/register', (req, res) => {
+  if (registerIp.blocked(req.ip)) return res.status(429).json({ error: 'محاولات كثيرة، حاول بعد ساعة' });
   const name = String(req.body.name || '').trim();
   const email = String(req.body.email || '').trim().toLowerCase();
   const phone = String(req.body.phone || '').trim();
   const password = String(req.body.password || '');
   if (name.length < 2) return res.status(400).json({ error: 'الاسم مطلوب' });
-  if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
+  // بريد واحد فقط: بدون فواصل أو أقواس حتى لا تنرسل رسائل الموقع لعناوين إضافية
+  if (!/^[^\s@,;<>"']+@[^\s@,;<>"']+\.[^\s@,;<>"']+$/.test(email)) return res.status(400).json({ error: 'البريد الإلكتروني غير صحيح' });
   if (password.length < 8) return res.status(400).json({ error: 'كلمة المرور يجب ألا تقل عن 8 أحرف' });
   if (db.prepare('SELECT 1 FROM users WHERE email = ?').get(email)) return res.status(409).json({ error: 'البريد مسجل مسبقًا' });
 
+  registerIp.hit(req.ip);
   const hash = bcrypt.hashSync(password, 10);
   const info = db.prepare('INSERT INTO users (name, email, phone, password_hash, is_admin) VALUES (?, ?, ?, ?, ?)')
     .run(name, email, phone || null, hash, email === ADMIN_EMAIL ? 1 : 0);
@@ -108,10 +140,14 @@ app.post('/api/auth/register', (req, res) => {
 
 app.post('/api/auth/login', (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
+  if (loginFailsAccount.blocked(email) || loginFailsIp.blocked(req.ip)) return res.status(429).json(TOO_MANY);
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
   if (!user || !bcrypt.compareSync(String(req.body.password || ''), user.password_hash)) {
+    loginFailsAccount.hit(email);
+    loginFailsIp.hit(req.ip);
     return res.status(401).json({ error: 'البريد أو كلمة المرور غير صحيحة' });
   }
+  loginFailsAccount.clear(email);
   if (user.suspended) return res.status(403).json({ error: 'هذا الحساب موقوف. تواصل مع الدعم.' });
   const token = createSession(res, user.id);
   res.json({ user: publicUser(user), ...(isApp(req) ? { token } : {}) });
@@ -188,6 +224,8 @@ app.put('/api/me', requireAuth, (req, res) => {
     if (!bcrypt.compareSync(String(req.body.currentPassword || ''), u.password_hash)) return res.status(400).json({ error: 'كلمة المرور الحالية غير صحيحة' });
     if (String(req.body.newPassword).length < 8) return res.status(400).json({ error: 'كلمة المرور الجديدة قصيرة' });
     db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(bcrypt.hashSync(String(req.body.newPassword), 10), req.user.id);
+    // تسجيل الخروج من كل الأجهزة الثانية، ويبقى هذا الجهاز مسجلًا
+    db.prepare('DELETE FROM sessions WHERE user_id = ? AND token != ?').run(req.user.id, sessionToken(req));
   }
   res.json({ user: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id)) });
 });

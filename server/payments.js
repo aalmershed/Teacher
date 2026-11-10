@@ -17,7 +17,10 @@ function getPlans() {
   };
 }
 const TRIAL_DAYS = Number(process.env.TRIAL_DAYS || 0);
-const PROVIDER = process.env.PAYMENT_PROVIDER || 'mock';
+// إذا ما انضبط PAYMENT_PROVIDER في الخادم الحقيقي نستخدم التفعيل اليدوي، حتى لا يتفعّل اشتراك بدون دفع
+const IS_PROD = process.env.NODE_ENV === 'production';
+const PROVIDER = process.env.PAYMENT_PROVIDER || (IS_PROD ? 'manual' : 'mock');
+if (IS_PROD && PROVIDER === 'mock') console.warn('⚠ PAYMENT_PROVIDER=mock في وضع الإنتاج: الاشتراكات تتفعّل بدون دفع!');
 
 // ميسر: المفتاح العام للنموذج في المتصفح، والسري للتحقق من الدفع من الخادم فقط
 const MOYASAR = {
